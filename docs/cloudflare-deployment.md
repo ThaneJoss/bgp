@@ -1,0 +1,105 @@
+# 部署到 bgp.thanejoss.com
+
+本项目部署为两个 Cloudflare **Workers**。网页使用 Vinext / Vite 构建，BGP 查询使用独立 Worker 读取 R2。
+
+| 请求 | Worker | 配置 |
+| --- | --- | --- |
+| `https://bgp.thanejoss.com/` 和静态资源 | `bgp` | 根目录 `wrangler.jsonc` |
+| `https://bgp.thanejoss.com/api/bgp/*` | `route-atlas-bgp` | `workers/bgp/wrangler.jsonc` |
+
+网页 Worker 绑定 Custom Domain；查询 Worker 绑定同一域名的路径 Route。
+[Cloudflare 的 Route 优先于同域名的 Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/routes/)，所以 API 不经过网页 SSR Worker。
+
+## 账户前置条件
+
+1. `thanejoss.com` 已是部署账户中的 active Cloudflare zone。
+2. `bgp.thanejoss.com` 没有与目标部署冲突的现有站点或 CNAME；若已有服务，先安排迁移。
+3. 同一账户已开通 R2，并准备好专用桶 `route-atlas-bgp`。若使用其他桶名，同时修改查询 Worker 的 `bucket_name` 和 GitHub 数据任务的 `R2_BUCKET`。
+
+[Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/) 会由 Cloudflare 创建 DNS 记录和证书。先部署网页，再部署 API Route。无需手动把 `bgp` CNAME 指向 `workers.dev`。
+
+R2 是包含免费额度的按用量计费服务。若账户已有 R2、且需要创建这个专用桶，可明确执行：
+
+```sh
+pnpm exec wrangler r2 bucket create route-atlas-bgp
+```
+
+部署命令不会创建桶、启用计费订阅或下载 BGP 数据。
+
+## 本地部署
+
+需要 Node.js 22.13+ 和仓库指定的 pnpm 11.25.0。在仓库根目录执行：
+
+```sh
+pnpm install --frozen-lockfile
+pnpm exec wrangler login
+pnpm exec wrangler whoami
+```
+
+确认登录的是持有 `thanejoss.com` 和 R2 桶的账户；多账户情况下设置 `CLOUDFLARE_ACCOUNT_ID` 选择账户。随后：
+
+```sh
+pnpm run deploy
+```
+
+该命令依次完成：
+
+1. `vite build` 构建网页及静态资源。
+2. `wrangler deploy` 根据 Vite 生成的部署配置发布 `bgp` 并绑定域名。
+3. `wrangler deploy --config workers/bgp/wrangler.jsonc` 发布 `route-atlas-bgp` 并绑定 API Route。
+
+这两个 Worker 的部署不是原子操作。如果第二步部署的网页已经成功，而查询 Worker 部署失败，解决 R2 或路由问题后单独重试 `pnpm run bgp:worker:deploy`。
+
+单独更新网页运行 `pnpm run deploy:web`；单独更新查询服务运行 `pnpm run bgp:worker:deploy`。
+
+根目录 `wrangler.jsonc` 是 Vite 的输入配置，`assets.directory` 由 Cloudflare Vite 插件写入生成的配置。
+不要跳过构建直接部署未打包的 Vinext 入口，也不要把整个仓库作为静态文件上传。
+
+## Cloudflare Workers Builds 连接 GitHub
+
+如果希望推送 `main` 后自动部署，可以分别创建两个 Workers Builds 项目，连接 `ThaneJoss/bgp`：
+
+| 设置 | 网页 | BGP API |
+| --- | --- | --- |
+| Worker 名称 | `bgp` | `route-atlas-bgp` |
+| 生产分支 | `main` | `main` |
+| 根目录 | `/` | `/` |
+| 构建命令 | `pnpm run build:cloudflare` | 留空 |
+| 部署命令 | `pnpm exec wrangler deploy` | `pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc` |
+
+构建环境使用支持的 Node.js 和项目指定的 pnpm，安装依赖时使用锁文件。首次先完成网页部署，确保域名 DNS 已创建，再部署 API。每个 Builds 项目只部署对应 Worker；本地使用的组合命令 `pnpm run deploy` 不用于这两个项目的部署命令。
+
+`.openai/hosting.json` 是已有托管元数据；个人 Cloudflare 部署使用 Wrangler 配置和自己的账户。
+
+## 首次路径数据发布
+
+网页可部署成功而查询库仍为空。要启用真实路径查询，按 [BGP 数据任务说明](bgp/ci.md) 配置：
+
+- GitHub Variables：`R2_ACCOUNT_ID`、`R2_BUCKET`。
+- GitHub Secrets：`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`。
+- 首次手动运行 `BGP daily snapshot (explicit opt-in)`，明确勾选下载与发布确认。
+
+首份快照成功后，再按需将 `BGP_INGEST_ENABLED` 设为 `true` 启用每日更新。Worker 部署不会触发数据任务。
+
+`public/bgp-service.json` 的 `apiBase` 保持空字符串，查询服务的 `APP_ORIGIN` 已设为 `https://bgp.thanejoss.com`。只有域名绑定 API Route 后，该同源配置才会访问查询 Worker；网页的 `workers.dev` 预览地址仍会返回未接通的 API fallback。
+
+## 验证
+
+不发布到云端的构建和打包检查：
+
+```sh
+pnpm run build:cloudflare
+pnpm exec wrangler deploy --dry-run
+pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc --dry-run
+```
+
+部署后检查：
+
+```sh
+curl -I https://bgp.thanejoss.com/
+curl -i https://bgp.thanejoss.com/api/bgp/manifest
+```
+
+首页应返回 200，静态拓扑数据应能加载。首份数据发布后，manifest 应返回 200 和可用 peer；空桶时 API 返回 503 属于尚未发布数据。若响应是网页 fallback 的“离线路径库尚未接通”，应检查 API Route 是否成功绑定。
+
+这些步骤不证明查询满足 Cloudflare Free 的 CPU 限额；线上 CPU 验收仍按 [预算说明](worker-free-budget.md) 执行。

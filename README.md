@@ -69,12 +69,16 @@ python3 scripts/bgp/build_snapshot.py \
 
 前端沿用现有 React/Vinext 工程和锁文件，安装依赖后 `npm run dev` / `npm run build`。拓扑视图的 CAIDA 静态数据与每日路径库独立，不会因 BGP CI 更新而改变。
 
-查询必须直达独立 Worker，不能为了方便代理穿过网页 SSR Worker，再声称查询预算相同：
+仓库已提供 `bgp.thanejoss.com` 的两份 Wrangler 配置：
 
-1. 修改 `workers/bgp/wrangler.jsonc` 的桶名和 `APP_ORIGIN`，使其对应自己的资源与网站完整 origin。
-2. 自行部署查询 Worker（`npm run bgp:worker:deploy`）。仓库不会自动部署或创建 R2 桶。
-3. 在 `public/bgp-service.json` 设置 `{"apiBase":"https://你的查询Worker.workers.dev"}`；或在自己的 Cloudflare zone 将 `/api/bgp/*` 路由至该 Worker，并保持空字符串。
-4. 首份快照成功发布后，网页从 `/api/bgp/manifest` 读取可用视角，通过单次 `/api/bgp/compare` 对比两 IP。
+| 配置 | Worker | 入口 |
+| --- | --- | --- |
+| `wrangler.jsonc` | `bgp` | 网页与静态资源，Custom Domain `bgp.thanejoss.com` |
+| `workers/bgp/wrangler.jsonc` | `route-atlas-bgp` | Route `bgp.thanejoss.com/api/bgp/*`，绑定专用 R2 桶 |
+
+Cloudflare 的路径 Route 优先于同域名的 Custom Domain，因此查询直接进入独立 Worker，不经过网页 SSR。`public/bgp-service.json` 保持 `{"apiBase":""}` 即可使用同源 API。
+
+在自己的 Cloudflare 账户确认 zone 和 R2 桶后，运行 `pnpm run deploy`，会先构建并部署网页，再部署查询 Worker。完整前置条件、安装命令、Workers Builds 设置和首次数据发布步骤见 **[Cloudflare 部署说明](docs/cloudflare-deployment.md)**。提交代码本身不会创建桶或启动真实 BGP 数据采集。
 
 未配置服务时页面明确显示路径库未接通，不展示模拟路径。旧 `/api/paths` 已停用，没有 RIPEstat fallback。现有 `.openai/hosting.json` 仅对应此前的网站托管；个人查询 Worker 使用自己的 Wrangler 配置，两者相互独立。
 
