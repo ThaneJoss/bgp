@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/bgp/**'
       - 'workers/bgp/**'
+      - 'workers/bgp-publisher/**'
       - 'tests/bgp/**'
       - 'config/bgp-collector.json'
       - '.github/workflows/bgp-*.yml'
@@ -13,6 +14,7 @@ on:
     paths:
       - 'scripts/bgp/**'
       - 'workers/bgp/**'
+      - 'workers/bgp-publisher/**'
       - 'tests/bgp/**'
       - 'config/bgp-collector.json'
       - '.github/workflows/bgp-*.yml'
@@ -39,6 +41,7 @@ jobs:
         run: |
           python -m unittest discover -s tests/bgp -p 'test_build.py' -v
           python -m unittest discover -s scripts/bgp -p 'test_pipeline.py' -v
+          python -m unittest discover -s scripts/bgp -p 'test_r2_http_client.py' -v
       - name: Query, CPU gate, and Python-to-Worker tests
         run: node --test tests/bgp/query.test.mjs scripts/bgp/check-worker-cpu.test.mjs scripts/bgp/test-e2e.mjs
       - name: Synthetic query benchmark (local timing, not Cloudflare CPU certification)

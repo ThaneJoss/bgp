@@ -33,3 +33,7 @@ jobs:
         run: pnpm exec wrangler deploy --config dist/server/wrangler.json --dry-run
       - name: Check BGP query Worker deployment bundle
         run: pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc --dry-run
+      - name: Test publisher Worker with a local R2 binding
+        run: pnpm run bgp:publisher:test
+      - name: Check BGP publisher Worker deployment bundle
+        run: pnpm exec wrangler deploy --config workers/bgp-publisher/wrangler.jsonc --dry-run

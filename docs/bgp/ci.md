@@ -25,9 +25,12 @@ configurable anomaly guard, not proof that the routing data is complete.
 
 `bgp-daily.yml` runs on a GitHub-hosted Ubuntu runner. That runner downloads
 the RouteViews RIB, parses MRT, builds indices and diffs, validates the output,
-and uploads the generated files to R2. R2 stores the published library;
+and uploads the generated files through the authenticated publication Worker
+to the Cloudflare R2 bucket `route-atlas-bgp`. R2 stores the published library;
 Cloudflare hosts the frontend and the query Worker, which only reads that
-library. Neither frontend builds nor query requests download the upstream RIB.
+library. The publication Worker only transfers generated objects through its
+native `BGP_BUCKET` binding; it does not download or parse the upstream RIB.
+Neither frontend builds nor query requests download the upstream RIB.
 Frontend npm/pnpm installation downloads JavaScript dependencies, not BGP data.
 
 * `bgp-checks.yml` runs only local synthetic Python/JavaScript correctness tests
@@ -44,22 +47,24 @@ Worker deployment and real Cloudflare CPU measurements are separate steps.
 
 ## Required GitHub configuration
 
-Use a dedicated **R2 Standard** bucket for this path library. Give the R2 token
-object read/write permissions scoped to this bucket. The publisher needs read,
-list, put and delete permissions for previous-state retrieval and retention.
-The Worker needs only its configured R2 binding; it must not receive these S3
-credentials.
+The dedicated **R2 Standard** bucket is `route-atlas-bgp`. Both the query
+Worker and `route-atlas-bgp-publisher` bind it as `BGP_BUCKET`. The query
+handler only reads data; the separate publication Worker requires a bearer
+secret for all read, list, put, compose and delete operations.
 
 Configure the following in the GitHub repository:
 
 | Kind | Name | Value |
 |---|---|---|
-| Variable | `R2_ACCOUNT_ID` | Cloudflare account ID, 32 hex characters |
-| Variable | `R2_BUCKET` | Existing dedicated bucket name |
-| Secret | `R2_ACCESS_KEY_ID` | R2 S3 API access key |
-| Secret | `R2_SECRET_ACCESS_KEY` | Corresponding R2 S3 secret |
+| Variable | `R2_BUCKET` | `route-atlas-bgp` |
+| Variable | `R2_PUBLISH_URL` | Deployed publication Worker's HTTPS URL |
+| Secret | `R2_PUBLISH_TOKEN` | Same value as the publication Worker's `INGEST_TOKEN` secret |
 
-A local Wrangler login does not configure these GitHub Variables or Secrets.
+Set the Worker secret with `wrangler secret put INGEST_TOKEN --config
+workers/bgp-publisher/wrangler.jsonc`. Keep its value in secrets storage only.
+GitHub needs neither R2 S3 credentials nor a Cloudflare account-wide API token.
+The publication Worker uses the R2 binding; `R2_ACCOUNT_ID` is not required.
+A local Wrangler login does not configure the GitHub Variables or Secrets.
 Once configured, run `BGP daily snapshot` from GitHub Actions for the first
 publication; subsequent scheduled runs use the same settings.
 
@@ -103,9 +108,10 @@ exact one-day change interval.
 
 The job has a **60-minute timeout**. Raw input, normalized prior state and SQLite
 build scratch live only in `_bgp/`; the cleanup step removes them. They are not
-committed, cached, or uploaded as GitHub Actions artifacts. The publisher client
-is pinned to `boto3==1.43.98`; the parser and validator use Python's standard
-library. The Node tests require no npm dependency installation.
+committed, cached, or uploaded as GitHub Actions artifacts. The publisher HTTP
+client, parser and validator use Python's standard library. Offline Node tests
+require no npm installation; `site-checks.yml` installs the locked dependencies
+and tests the publication Worker against Miniflare's local R2 implementation.
 
 ## Publication and retention
 
@@ -119,7 +125,12 @@ Publication occurs in this order:
 3. Ensure the remote pointer still matches the state used for the diff. Upload
    `snapshots/<timestamp>/...` using `If-None-Match: *`; an existing different
    object is never overwritten. Every upload has a server-checked Content-MD5,
-   SHA-256 metadata, and a subsequent HEAD size/metadata verification.
+   SHA-256 metadata, and a subsequent HEAD size/metadata verification. Files
+   larger than 64 MiB are uploaded in 64 MiB temporary `_uploads/` parts, then
+   streamed into one conditional R2 object by the publication Worker. The client
+   removes temporary parts after the operation; query-file layout is unchanged.
+   The bucket lifecycle rule expires `_uploads/` objects after one day to clean
+   up parts left by forcibly interrupted runs; published snapshots are excluded.
 4. Upload the immutable manifest and a copy of the diff under `diffs/<timestamp>`.
 5. Update `latest.json` **last**, with `If-Match: <old ETag>` (or
    `If-None-Match: *` on the first run). A concurrent update fails this publish
@@ -154,14 +165,14 @@ Default limits in the collector config:
 | Manifest read by the Worker | 64 KiB |
 | Index read per family | 256 KiB |
 
-The bucket budget counts existing objects plus pending upload growth **before**
-uploads; it fails closed if there is insufficient room. It is a storage guard,
+The bucket budget counts existing objects, pending upload growth and the largest
+file temporarily duplicated during part composition **before** uploads; it fails closed if there is insufficient room. It is a storage guard,
 not a guarantee that account-wide R2 charges cannot occur. Changing thresholds
 or retention is a conscious configuration change, not an automatic recovery.
 
 There are only a small number of packed files per snapshot, rather than one R2
-object per route. The R2 S3 API supports the conditional headers and Content-MD5
-used here: [official compatibility table](https://developers.cloudflare.com/r2/api/s3/api/).
+object per route. The publication Worker maps conditional headers, checksums
+and metadata to the [native R2 binding API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/).
 
 ## Local verification without downloads
 
@@ -170,12 +181,16 @@ Run from the repository root:
 ```sh
 python -m unittest discover -s tests/bgp -p 'test_build.py' -v
 python -m unittest discover -s scripts/bgp -p 'test_pipeline.py' -v
+python -m unittest discover -s scripts/bgp -p 'test_r2_http_client.py' -v
 node --test tests/bgp/query.test.mjs scripts/bgp/check-worker-cpu.test.mjs scripts/bgp/test-e2e.mjs
 node scripts/bgp/bench-query.mjs
 ```
 
-The publisher tests use an in-memory R2 adapter and the downloader tests use a
-mock HTTP response. They verify rejected inputs, integrity failures, concurrent
+The publisher pipeline tests use an in-memory R2 adapter, the HTTP client tests
+use a local HTTP server, and the downloader tests use a mock HTTP response. They verify rejected inputs, integrity failures, concurrent
 publication, stale/older snapshots and retention without external requests.
 Local benchmark timing is not Cloudflare's billable CPU measurement; the Worker
 CPU acceptance process is documented separately.
+
+After installing locked dependencies, `pnpm run bgp:publisher:test` also checks
+authentication, native R2 conditional writes and streamed object composition.

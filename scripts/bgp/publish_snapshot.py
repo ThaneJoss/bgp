@@ -16,38 +16,21 @@ import sys
 
 from validate_snapshot import MANIFEST_LIMIT, file_hash, load_manifest, safe_key, snapshot_id, validate
 
-REQUIRED_ENV = ("R2_ACCOUNT_ID", "R2_BUCKET", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY")
+REQUIRED_ENV = ("R2_PUBLISH_URL", "R2_PUBLISH_TOKEN")
 
 
 def check_environment() -> None:
     missing = [key for key in REQUIRED_ENV if not os.environ.get(key)]
     if missing:
         raise ValueError("R2 is not configured. Set repository secrets/variables: " + ", ".join(missing))
-    if not re.fullmatch(r"[a-fA-F0-9]{32}", os.environ["R2_ACCOUNT_ID"]):
-        raise ValueError("R2_ACCOUNT_ID must be the 32-character Cloudflare account ID")
-    if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]", os.environ["R2_BUCKET"]):
-        raise ValueError("Invalid R2 bucket name")
+    from r2_http_client import R2HTTPClient
+    R2HTTPClient(os.environ["R2_PUBLISH_URL"], os.environ["R2_PUBLISH_TOKEN"])
 
 
 def make_client():
     check_environment()
-    try:
-        import boto3
-        from botocore.config import Config
-    except ImportError as error:
-        raise RuntimeError("Install the pinned CI dependency: boto3==1.43.98") from error
-    return boto3.client(
-        "s3", region_name="auto",
-        endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
-        aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
-        config=Config(
-            retries={"mode": "standard", "max_attempts": 3},
-            s3={"addressing_style": "path"},
-            request_checksum_calculation="when_required",
-            response_checksum_validation="when_required",
-        ),
-    )
+    from r2_http_client import R2HTTPClient
+    return R2HTTPClient(os.environ["R2_PUBLISH_URL"], os.environ["R2_PUBLISH_TOKEN"])
 
 
 def error_code(error: Exception) -> str:
@@ -206,7 +189,12 @@ def publish(client, bucket: str, directory: Path, previous_path: Path, config: d
     files.append((prefix + "manifest.json", directory / "manifest.json"))
     files.append((f"diffs/{identifier}.jsonl.gz", directory / manifest["diff"]))
     growth = sum(path.stat().st_size for key, path in files if key not in existing)
-    if sum(existing.values()) + growth + MANIFEST_LIMIT > maximum:
+    # The HTTP gateway temporarily holds one extra copy of a composed file.
+    # Uploads are sequential and each file's parts are cleaned before the next.
+    part_size = getattr(client, "part_size", None)
+    temporary_bytes = max((path.stat().st_size for _, path in files
+                           if part_size is not None and path.stat().st_size > part_size), default=0)
+    if sum(existing.values()) + growth + temporary_bytes + MANIFEST_LIMIT > maximum:
         raise ValueError("Publishing would exceed the 8 GiB/configured bucket budget, including temporary versions")
     for key, path in files:
         kind = "application/json" if key.endswith(".json") else "application/octet-stream"
@@ -263,9 +251,9 @@ def main() -> None:
     client = make_client()
     config = json.loads(args.config.read_text())
     if args.command == "fetch-previous":
-        result = fetch_previous(client, os.environ["R2_BUCKET"], args.directory, config)
+        result = fetch_previous(client, "gateway-bound-bucket", args.directory, config)
     else:
-        result = publish(client, os.environ["R2_BUCKET"], args.directory, args.previous_descriptor, config)
+        result = publish(client, "gateway-bound-bucket", args.directory, args.previous_descriptor, config)
     print(json.dumps(result))
 
 

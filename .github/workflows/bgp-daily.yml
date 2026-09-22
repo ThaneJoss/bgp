@@ -24,10 +24,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
-      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_PUBLISH_URL: ${{ vars.R2_PUBLISH_URL }}
+      R2_PUBLISH_TOKEN: ${{ secrets.R2_PUBLISH_TOKEN }}
       REQUESTED_DATE: ${{ inputs.snapshot_date }}
       PYTHONUNBUFFERED: '1'
     steps:
@@ -39,8 +38,6 @@ jobs:
           python-version: '3.12'
       - name: Fail before download if R2 settings are missing
         run: python scripts/bgp/publish_snapshot.py check-env
-      - name: Install pinned publisher client
-        run: python -m pip install --disable-pip-version-check 'boto3==1.43.98'
       - name: Fetch previously published normalized routes for the diff
         run: python scripts/bgp/publish_snapshot.py fetch-previous --directory _bgp/previous
       - name: Pin one exact snapshot and reject older dates
