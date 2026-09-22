@@ -1,6 +1,6 @@
 # bgp / AS Atlas
 
-GitHub Actions 每日下载 RouteViews 数据、解析并生成自有 BGP 路径库，通过独立的认证发布 Worker 上传到 Cloudflare R2 桶 `route-atlas-bgp` 存储。Cloudflare 负责托管网页和查询 Worker；查询时只读取已生成的 R2 数据。前端保留全球 AS 拓扑与两 IP 路径对比。提交代码和运行合成测试不会下载真实路由数据；数据任务按每日计划或手动触发执行。
+GitHub Actions 每日下载 RouteViews 数据、解析并生成自有 BGP 路径库，通过 `bgp` Worker 的认证发布入口 `/_ingest` 上传到 Cloudflare R2 桶 `route-atlas-bgp` 存储。单个 Cloudflare Worker `bgp` 负责网页、查询和认证上传；查询时只读取已生成的 R2 数据。前端保留全球 AS 拓扑与两 IP 路径对比。提交代码和运行合成测试不会下载真实路由数据；数据任务按每日计划或手动触发执行。
 
 ## 数据范围
 
@@ -18,11 +18,11 @@ GitHub Actions 每日下载 RouteViews 数据、解析并生成自有 BGP 路径
 | `config/bgp-collector.json` | 固定采集器、peer allowlist、覆盖与存储上限 |
 | `scripts/bgp/mrt.py` | 标准库流式 MRT TABLE_DUMP_V2 / gzip / bzip2 解析 |
 | `scripts/bgp/build_snapshot.py` | 两遍输入扫描、SQLite 外排、LPM 区间、路径去重、每日 diff |
-| `workers/bgp/src/index.mjs` | 独立的极简查询 Worker，无 React / SSR 导入 |
+| `workers/bgp/src/index.mjs` | 查询 handler，统一入口优先分派 API 请求 |
 | `workers/bgp-publisher/src/index.mjs` | 认证发布入口，通过原生 R2 binding 存取生成对象，无数据采集或解析 |
 | `scripts/bgp/r2_http_client.py` | GitHub runner 标准库 HTTP 上传客户端，支持大文件分片合成 |
 | `.github/workflows/bgp-checks.yml` | 合成测试与本地基准，不访问 BGP 上游 |
-| `.github/workflows/site-checks.yml` | 安装前端依赖、构建网页、测试本地 R2 发布入口并检查三个 Worker 的部署包 |
+| `.github/workflows/site-checks.yml` | 安装前端依赖、构建网页、测试本地 R2 发布入口并检查统一 Worker 的部署包 |
 | `.github/workflows/bgp-daily.yml` | 在 GitHub runner 下载每日 00:00 UTC RIB，构建并发布 |
 | `public/bgp-service.json` | 前端查询 API 地址；空字符串表示同源 `/api/bgp/*` |
 | `docs/bgp/ci.md` | CI 变量、Secrets、首次发布与保留策略 |
@@ -67,25 +67,25 @@ python3 scripts/bgp/build_snapshot.py \
   --data-time 2026-09-22T00:00:00Z
 ```
 
-按 `docs/bgp/ci.md` 配置 GitHub 的 R2 Variables 与 Secrets 后，可手动运行 `BGP daily snapshot` 发布首份快照；每日 03:17 UTC 自动更新，无需额外启用变量或确认勾选。GitHub 使用 `R2_BUCKET`、`R2_PUBLISH_URL` 与 `R2_PUBLISH_TOKEN`；后者与发布 Worker 的 `INGEST_TOKEN` secret 一致，无需 S3 密钥。缺少发布配置时任务会在下载前报错。
+按 `docs/bgp/ci.md` 配置 GitHub 的 R2 Variables 与 Secrets 后，可手动运行 `BGP daily snapshot` 发布首份快照；每日 03:17 UTC 自动更新，无需额外启用变量或确认勾选。GitHub 使用 `R2_BUCKET`、`R2_PUBLISH_URL` 与 `R2_PUBLISH_TOKEN`；后者与 `bgp` Worker 的 `INGEST_TOKEN` secret 一致，无需 S3 密钥。缺少发布配置时任务会在下载前报错。
 
 ## 前端与个人 Cloudflare 部署
 
 前端沿用现有 React/Vinext 工程和锁文件，安装依赖后 `npm run dev` / `npm run build`。拓扑视图使用已提交的 CAIDA 静态快照，当前没有自动更新 workflow，不会因 BGP CI 更新而改变。前端构建只打包这些产物；构建中的 npm/pnpm 下载是 JavaScript 依赖安装，不是 CAIDA 或 RouteViews 数据采集。
 
-仓库已提供 `bgp.thanejoss.com` 的三份 Wrangler 配置：
+仓库通过根目录 `wrangler.jsonc` 配置单个 Worker `bgp`，由 custom build 调用 Vinext / Vite 生成最终部署包。`pnpm run deploy` 构建并部署，`pnpm run preview:cloudflare` 构建并上传预览版本。该 Worker 使用 Custom Domain `bgp.thanejoss.com`，同时绑定 R2 桶 `route-atlas-bgp` 为 `BGP_BUCKET`。
 
-| 配置 | Worker | 入口 |
-| --- | --- | --- |
-| `wrangler.jsonc` | `bgp` | 网页与静态资源，Custom Domain `bgp.thanejoss.com` |
-| `workers/bgp/wrangler.jsonc` | `route-atlas-bgp` | Route `bgp.thanejoss.com/api/bgp/*`，绑定专用 R2 桶 |
-| `workers/bgp-publisher/wrangler.jsonc` | `route-atlas-bgp-publisher` | 认证的 workers.dev 发布入口，绑定同一专用 R2 桶 |
+| 入口 | 用途 |
+| --- | --- |
+| `/` 和静态资源 | 网页 |
+| `/api/bgp/*` | BGP 查询，直接分派到查询 handler |
+| `/_ingest/*` | GitHub Actions 认证上传，使用 `INGEST_TOKEN` |
 
-Cloudflare 的路径 Route 优先于同域名的 Custom Domain，因此查询直接进入独立 Worker，不经过网页 SSR。`public/bgp-service.json` 保持 `{"apiBase":""}` 即可使用同源 API。
+`public/bgp-service.json` 保持 `{"apiBase":""}`，无需独立 API Route。迁移时应先从旧 `route-atlas-bgp` Worker 解除 `bgp.thanejoss.com/api/bgp/*` Route，否则该 Route 会优先截获查询请求。旧 `route-atlas-bgp` 与 `route-atlas-bgp-publisher` 两个 Worker 由用户自行删除；**同名 R2 桶 `route-atlas-bgp` 必须保留**。
 
-在自己的 Cloudflare 账户确认 zone 和 R2 桶后，运行 `pnpm run deploy`，会先构建并部署网页，再部署查询与发布 Worker。完整前置条件、安装命令、Workers Builds 设置和首次数据发布步骤见 **[Cloudflare 部署说明](docs/cloudflare-deployment.md)**。提交代码本身不会创建桶或启动真实 BGP 数据采集。
+GitHub 的 `R2_PUBLISH_URL` 使用 `https://bgp.thanejoss.com/_ingest`。完整构建部署命令、Workers Builds 设置与数据发布配置见 **[Cloudflare 部署说明](docs/cloudflare-deployment.md)**。变更通过新 PR 审查，部署可以来自该 PR 分支；部署完成不代表 PR 已合并。
 
-未配置服务时页面明确显示路径库未接通，不展示模拟路径。旧 `/api/paths` 已停用，没有 RIPEstat fallback。现有 `.openai/hosting.json` 仅对应此前的网站托管；个人查询 Worker 使用自己的 Wrangler 配置，两者相互独立。
+未配置数据时页面明确显示路径库未接通，不展示模拟路径。旧 `/api/paths` 已停用，没有 RIPEstat fallback。现有 `.openai/hosting.json` 是此前的网站托管元数据，个人 Cloudflare 部署使用根目录 Wrangler 配置。
 
 线上验收使用从 Cloudflare Workers Logs 导出的真实 invocation 日志：
 

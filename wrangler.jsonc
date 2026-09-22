@@ -1,17 +1,50 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "bgp",
-  "main": "vinext/server/fetch-handler",
+  "main": "./dist/server/index.js",
   "compatibility_date": "2026-09-22",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": true,
   "routes": [
-    { "pattern": "bgp.thanejoss.com", "custom_domain": true }
+    {
+      "pattern": "bgp.thanejoss.com",
+      "custom_domain": true
+    }
   ],
   "assets": {
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "directory": "./dist/client",
+    "run_worker_first": [
+      "/api/bgp/*",
+      "/_ingest/*"
+    ]
   },
   "observability": {
     "enabled": true
+  },
+  "no_bundle": true,
+  "find_additional_modules": true,
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": [
+        "**/*.js",
+        "**/*.mjs"
+      ]
+    }
+  ],
+  "build": {
+    "command": "node node_modules/vite/bin/vite.js build"
+  },
+  "r2_buckets": [
+    {
+      "binding": "BGP_BUCKET",
+      "bucket_name": "route-atlas-bgp"
+    }
+  ],
+  "vars": {
+    "APP_ORIGIN": "https://bgp.thanejoss.com"
   }
 }

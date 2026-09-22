@@ -1,7 +1,9 @@
-# BGP query Worker
+# BGP query handler
 
-This is a separate Worker with no React/SSR imports. It only reads your own
-`BGP_BUCKET` R2 binding; it never calls RIS, RouteViews or another JSON backend.
+This module handles `/api/bgp/*` inside the unified `bgp` Worker. The shared
+entrypoint dispatches queries directly to this handler before webpage handling.
+Queries only read the `BGP_BUCKET` R2 binding; they never call RIS, RouteViews or
+another JSON backend.
 No deployment, bucket creation or data download occurs when running its tests.
 
 ## API
@@ -53,11 +55,12 @@ deployed invocation `cpuTime` and errors before claiming that limit is met.
 
 ## Configuration and local verification
 
-`wrangler.jsonc` declares `BGP_BUCKET` and the permitted frontend
-`APP_ORIGIN`. Change the bucket name and exact frontend origin for your account.
-Alternatively route the Worker under the frontend's own origin. CORS never
-uses `*`. CORS is a browser policy, not authentication or protection against
-non-browser callers.
+The repository-root [`wrangler.jsonc`](../../wrangler.jsonc) declares
+`BGP_BUCKET` and the permitted frontend `APP_ORIGIN`. It deploys the unified
+`bgp` Worker, including this handler, the webpage and authenticated uploads.
+The frontend uses same-origin `/api/bgp/*`; no separate query Worker or API
+Route is needed. CORS never uses `*`. CORS is a browser policy, not
+authentication or protection against non-browser callers.
 
 The config deliberately has no Paid-plan `limits.cpu_ms` override. Invocation
 logs are enabled for a later real Cloudflare CPU check. Creating an R2 bucket

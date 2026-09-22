@@ -1,10 +1,10 @@
 # BGP 查询的 Workers Free 预算与验收
 
-本文只讨论 `workers/bgp` 的独立查询 API。每日 MRT 解压、解析、最长前缀匹配编译、路径去重与 diff 在离线任务中完成，不在用户请求或 Worker Cron 中执行。页面的 React / SSR 开销不能用查询 API 的结果代替验证。
+本文只讨论统一 `bgp` Worker 内由 `workers/bgp` handler 处理的 `/api/bgp/*` 查询 API。每日 MRT 解压、解析、最长前缀匹配编译、路径去重与 diff 在离线任务中完成，不在用户请求或 Worker Cron 中执行。网页、查询和认证上传共用一个部署。页面的 React / SSR 开销不能用查询 API 的结果代替验证，统一入口和模块初始化开销必须计入实际查询 invocation。
 
 ## 结论边界
 
-实现通过固定输入大小、二进制索引和 R2 Range 限制每次查询的工作量。设计目标是 Workers Free 的 **10 ms CPU / HTTP 请求**，但本地 Node 或 workerd 基准不能证明 Cloudflare 边缘已经满足这个限制。正式验收必须读真实调用的 Cloudflare CPU 指标。当前没有因本文或验收脚本而部署 Worker、下载 MRT 或触发生产任务。
+实现通过固定输入大小、二进制索引和 R2 Range 限制每次查询的工作量。设计目标是 Workers Free 的 **10 ms CPU / HTTP 请求**，但本地 Node 或 workerd 基准不能证明 Cloudflare 边缘已经满足这个限制。正式验收必须读真实调用的 Cloudflare CPU 指标。本文和验收脚本不自动部署 Worker、下载 MRT 或触发生产任务；是否已部署不等于 CPU 验收通过。
 
 ## 官方限制
 
@@ -62,9 +62,9 @@ node --test scripts/bgp/check-worker-cpu.test.mjs
 
 ## 线上验收
 
-1. 为独立查询 Worker 开启 `observability.enabled`，验收期间采样率设为 1，并保留 invocation logs。Workers Logs 在免费计划有 200,000 条事件 / 天、3 天保留期；无需额外使用付费日志导出产品。
+1. 为统一 `bgp` Worker 开启 `observability.enabled`，验收期间采样率设为 1，并保留 invocation logs。Workers Logs 在免费计划有 200,000 条事件 / 天、3 天保留期；无需额外使用付费日志导出产品。
 2. 在真实已发布快照上分别采集冷实例 / 冷数据读取、重复查询、随机 IPv4、随机 IPv6、IPv4 + IPv6 对比、无路由以及最长路径样本。每类分别核对，不能让大量缓存命中掩盖冷查询。
-3. 从 Cloudflare Observability 导出 **invocation** 记录，必须包含平台测量的 CPU 时间和 outcome。不要把浏览器响应时间、Worker 内的 `performance.now()` 或自己记录的业务耗时改名为 CPU。
+3. 从 Cloudflare Observability 筛选 `/api/bgp/*` 请求，再导出 **invocation** 记录，必须包含平台测量的 CPU 时间和 outcome。不要把浏览器响应时间、Worker 内的 `performance.now()` 或自己记录的业务耗时改名为 CPU。
 4. 在本地运行下面的脚本；它只读本地日志文件，不会请求 API。
 
 ```sh
