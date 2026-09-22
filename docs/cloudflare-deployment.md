@@ -45,7 +45,7 @@ pnpm run deploy
 该命令依次完成：
 
 1. `vite build` 构建网页及静态资源。
-2. `wrangler deploy` 根据 Vite 生成的部署配置发布 `bgp` 并绑定域名。
+2. `wrangler deploy --config dist/server/wrangler.json` 使用 Vite 生成的部署配置发布 `bgp` 并绑定域名。
 3. `wrangler deploy --config workers/bgp/wrangler.jsonc` 发布 `route-atlas-bgp` 并绑定 API Route。
 
 这两个 Worker 的部署不是原子操作。如果第二步部署的网页已经成功，而查询 Worker 部署失败，解决 R2 或路由问题后单独重试 `pnpm run bgp:worker:deploy`。
@@ -65,12 +65,12 @@ pnpm run deploy
 | 生产分支 | `main` | `main` |
 | 根目录 | `/` | `/` |
 | 构建命令 | `pnpm run build:cloudflare` | 留空 |
-| 部署命令 | `pnpm exec wrangler deploy` | `pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc` |
-| 非生产分支部署命令 | `pnpm exec wrangler versions upload` | `pnpm exec wrangler versions upload --config workers/bgp/wrangler.jsonc` |
+| 部署命令 | `pnpm exec wrangler deploy --config dist/server/wrangler.json` | `pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc` |
+| 非生产分支部署命令 | `pnpm exec wrangler versions upload --config dist/server/wrangler.json` | `pnpm exec wrangler versions upload --config workers/bgp/wrangler.jsonc` |
 
 构建环境通过仓库的 `.node-version` 使用 Node.js 22.23.2。在两个 Builds 项目的 **Settings → Build → Build variables and secrets** 设置 `PNPM_VERSION=11.25.0` 和 `SHARP_IGNORE_GLOBAL_LIBVIPS=1`，安装依赖时使用锁文件。后者让 sharp 使用其预编译依赖，避免构建镜像自带的 libvips 改变安装行为。Cloudflare 支持的工具版本选择方式见[构建镜像文档](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/)。
 
-本项目的网页使用 Vinext，按表格设置构建和部署命令。控制台若按 `next` 依赖自动填入 OpenNext 的构建命令，需要替换为 `pnpm run build:cloudflare`。首次先完成网页部署，确保域名 DNS 已创建，再部署 API。每个 Builds 项目只部署对应 Worker；本地使用的组合命令 `pnpm run deploy` 不用于这两个项目的部署命令。
+本项目的网页使用 Vinext，按表格设置构建和部署命令。控制台若按 `next` 依赖自动填入 OpenNext 的构建命令，需要替换为 `pnpm run build:cloudflare`。部署明确读取 `dist/server/wrangler.json`，避免 Wrangler 在缺少输入配置时自动选择 OpenNext。出现 `pnpm opennextjs-cloudflare build` 后找不到 `.next/server/middleware-manifest.json` 的错误，说明使用了错误的构建适配器：Vinext 的产物在 `dist/`，不会生成 OpenNext 所需的 `.next/` manifest。首次先完成网页部署，确保域名 DNS 已创建，再部署 API。每个 Builds 项目只部署对应 Worker；本地使用的组合命令 `pnpm run deploy` 不用于这两个项目的部署命令。
 
 `.github/workflows/site-checks.yml` 会在 PR 和 `main` 推送时安装锁定依赖、构建完整网页，并对两个 Worker 执行 Wrangler dry-run；日志可直接在 GitHub Actions 查看。这个检查不需要 Cloudflare 或 R2 凭据，也不下载原始 BGP 数据。
 
@@ -98,7 +98,7 @@ pnpm run deploy
 
 ```sh
 pnpm run build:cloudflare
-pnpm exec wrangler deploy --dry-run
+pnpm exec wrangler deploy --config dist/server/wrangler.json --dry-run
 pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc --dry-run
 ```
 

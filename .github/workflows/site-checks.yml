@@ -30,6 +30,6 @@ jobs:
       - name: Build website and existing static data
         run: pnpm run build:cloudflare
       - name: Check website Worker deployment bundle
-        run: pnpm exec wrangler deploy --dry-run
+        run: pnpm exec wrangler deploy --config dist/server/wrangler.json --dry-run
       - name: Check BGP query Worker deployment bundle
         run: pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc --dry-run
