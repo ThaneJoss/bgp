@@ -9,12 +9,17 @@
     "install:ci": "bash scripts/install-pnpm.sh",
     "dev": "node scripts/run-framework.mjs dev",
     "build": "node scripts/run-framework.mjs build",
+    "build:cloudflare": "vite build",
+    "deploy:web": "npm run build:cloudflare && wrangler deploy --config dist/server/wrangler.json",
+    "deploy": "npm run deploy:web && npm run bgp:worker:deploy && npm run bgp:publisher:deploy",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "bgp:test": "python3 -m unittest discover -s tests/bgp -p \"test_*.py\" && python3 scripts/bgp/test_pipeline.py && node --test tests/bgp/query.test.mjs scripts/bgp/check-worker-cpu.test.mjs && node scripts/bgp/test-e2e.mjs",
+    "bgp:test": "python3 -m unittest discover -s tests/bgp -p \"test_*.py\" && python3 scripts/bgp/test_pipeline.py && python3 scripts/bgp/test_r2_http_client.py && node --test tests/bgp/query.test.mjs scripts/bgp/check-worker-cpu.test.mjs && node scripts/bgp/test-e2e.mjs",
     "bgp:bench": "node scripts/bgp/bench-query.mjs",
     "bgp:worker:dev": "wrangler dev --config workers/bgp/wrangler.jsonc --local",
+    "bgp:publisher:test": "node --test tests/bgp/publisher-worker.test.mjs",
+    "bgp:publisher:deploy": "wrangler deploy --config workers/bgp-publisher/wrangler.jsonc",
     "bgp:worker:deploy": "wrangler deploy --config workers/bgp/wrangler.jsonc"
   },
   "dependencies": {

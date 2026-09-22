@@ -120,7 +120,7 @@ def main() -> None:
     metadata = download(args.date, args.output, json.loads(args.config.read_text()))
     args.metadata.parent.mkdir(parents=True, exist_ok=True)
     args.metadata.write_text(json.dumps(metadata, indent=2) + "\n")
-    print(json.dumps(metadata))
+    print(json.dumps({key: metadata[key] for key in ("snapshotId", "dataTime", "bytes")}))
 
 
 if __name__ == "__main__":

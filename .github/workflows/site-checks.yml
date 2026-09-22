@@ -1,0 +1,39 @@
+name: Website build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SHARP_IGNORE_GLOBAL_LIBVIPS: '1'
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install locked website dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build website and existing static data
+        run: pnpm run build:cloudflare
+      - name: Check website Worker deployment bundle
+        run: pnpm exec wrangler deploy --config dist/server/wrangler.json --dry-run
+      - name: Check BGP query Worker deployment bundle
+        run: pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc --dry-run
+      - name: Test publisher Worker with a local R2 binding
+        run: pnpm run bgp:publisher:test
+      - name: Check BGP publisher Worker deployment bundle
+        run: pnpm exec wrangler deploy --config workers/bgp-publisher/wrangler.jsonc --dry-run

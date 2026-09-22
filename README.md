@@ -1,6 +1,6 @@
 # bgp / AS Atlas
 
-每日离线生成自有 BGP 路径库，Cloudflare Worker 查询时只读取自己的 R2 数据。前端保留全球 AS 拓扑与两 IP 路径对比。**提交代码和运行测试不会下载真实路由数据；定时采集默认关闭。**
+GitHub Actions 每日下载 RouteViews 数据、解析并生成自有 BGP 路径库，通过独立的认证发布 Worker 上传到 Cloudflare R2 桶 `route-atlas-bgp` 存储。Cloudflare 负责托管网页和查询 Worker；查询时只读取已生成的 R2 数据。前端保留全球 AS 拓扑与两 IP 路径对比。提交代码和运行合成测试不会下载真实路由数据；数据任务按每日计划或手动触发执行。
 
 ## 数据范围
 
@@ -19,8 +19,11 @@
 | `scripts/bgp/mrt.py` | 标准库流式 MRT TABLE_DUMP_V2 / gzip / bzip2 解析 |
 | `scripts/bgp/build_snapshot.py` | 两遍输入扫描、SQLite 外排、LPM 区间、路径去重、每日 diff |
 | `workers/bgp/src/index.mjs` | 独立的极简查询 Worker，无 React / SSR 导入 |
+| `workers/bgp-publisher/src/index.mjs` | 认证发布入口，通过原生 R2 binding 存取生成对象，无数据采集或解析 |
+| `scripts/bgp/r2_http_client.py` | GitHub runner 标准库 HTTP 上传客户端，支持大文件分片合成 |
 | `.github/workflows/bgp-checks.yml` | 合成测试与本地基准，不访问 BGP 上游 |
-| `.github/workflows/bgp-daily.yml` | 显式启用后下载每日 00:00 UTC RIB，构建并发布 |
+| `.github/workflows/site-checks.yml` | 安装前端依赖、构建网页、测试本地 R2 发布入口并检查三个 Worker 的部署包 |
+| `.github/workflows/bgp-daily.yml` | 在 GitHub runner 下载每日 00:00 UTC RIB，构建并发布 |
 | `public/bgp-service.json` | 前端查询 API 地址；空字符串表示同源 `/api/bgp/*` |
 | `docs/bgp/ci.md` | CI 变量、Secrets、首次发布与保留策略 |
 | `docs/bgp/format.md` | 二进制索引与 API 约定 |
@@ -45,12 +48,13 @@ Cloudflare Workers Free 的 HTTP CPU 限额是 10 ms。Node 合成基准已有�
 ```sh
 python3 -m unittest discover -s tests/bgp -p 'test_*.py'
 python3 scripts/bgp/test_pipeline.py
+python3 scripts/bgp/test_r2_http_client.py
 node --test tests/bgp/query.test.mjs scripts/bgp/check-worker-cpu.test.mjs
 node scripts/bgp/test-e2e.mjs
 node scripts/bgp/bench-query.mjs --iterations 1000
 ```
 
-跨语言测试把合成前缀交给 Python 构建器，再由真实 Worker handler 查询生成的二进制文件，对照独立最长前缀匹配结果。CI 不依赖 BGP 数据下载或 Cloudflare 凭据即可运行这些检查。
+跨语言测试把合成前缀交给 Python 构建器，再由真实 Worker handler 查询生成的二进制文件，对照独立最长前缀匹配结果。CI 不依赖 BGP 数据下载或 Cloudflare 凭据即可运行这些检查。安装锁定依赖后，`pnpm run bgp:publisher:test` 额外验证本地原生 R2 binding、条件写入与分片合成。
 
 已有本地 MRT 才运行以下离线构建命令；它本身不联网：
 
@@ -63,18 +67,23 @@ python3 scripts/bgp/build_snapshot.py \
   --data-time 2026-09-22T00:00:00Z
 ```
 
-随后按 `docs/bgp/ci.md` 配置自己的 R2，并手动确认首次下载/发布。`BGP_INGEST_ENABLED` 未设为 `true` 时每日任务不采集；手动 workflow 也要求明确勾选确认。这里没有启动任何真实数据任务。
+按 `docs/bgp/ci.md` 配置 GitHub 的 R2 Variables 与 Secrets 后，可手动运行 `BGP daily snapshot` 发布首份快照；每日 03:17 UTC 自动更新，无需额外启用变量或确认勾选。GitHub 使用 `R2_BUCKET`、`R2_PUBLISH_URL` 与 `R2_PUBLISH_TOKEN`；后者与发布 Worker 的 `INGEST_TOKEN` secret 一致，无需 S3 密钥。缺少发布配置时任务会在下载前报错。
 
 ## 前端与个人 Cloudflare 部署
 
-前端沿用现有 React/Vinext 工程和锁文件，安装依赖后 `npm run dev` / `npm run build`。拓扑视图的 CAIDA 静态数据与每日路径库独立，不会因 BGP CI 更新而改变。
+前端沿用现有 React/Vinext 工程和锁文件，安装依赖后 `npm run dev` / `npm run build`。拓扑视图使用已提交的 CAIDA 静态快照，当前没有自动更新 workflow，不会因 BGP CI 更新而改变。前端构建只打包这些产物；构建中的 npm/pnpm 下载是 JavaScript 依赖安装，不是 CAIDA 或 RouteViews 数据采集。
 
-查询必须直达独立 Worker，不能为了方便代理穿过网页 SSR Worker，再声称查询预算相同：
+仓库已提供 `bgp.thanejoss.com` 的三份 Wrangler 配置：
 
-1. 修改 `workers/bgp/wrangler.jsonc` 的桶名和 `APP_ORIGIN`，使其对应自己的资源与网站完整 origin。
-2. 自行部署查询 Worker（`npm run bgp:worker:deploy`）。仓库不会自动部署或创建 R2 桶。
-3. 在 `public/bgp-service.json` 设置 `{"apiBase":"https://你的查询Worker.workers.dev"}`；或在自己的 Cloudflare zone 将 `/api/bgp/*` 路由至该 Worker，并保持空字符串。
-4. 首份快照成功发布后，网页从 `/api/bgp/manifest` 读取可用视角，通过单次 `/api/bgp/compare` 对比两 IP。
+| 配置 | Worker | 入口 |
+| --- | --- | --- |
+| `wrangler.jsonc` | `bgp` | 网页与静态资源，Custom Domain `bgp.thanejoss.com` |
+| `workers/bgp/wrangler.jsonc` | `route-atlas-bgp` | Route `bgp.thanejoss.com/api/bgp/*`，绑定专用 R2 桶 |
+| `workers/bgp-publisher/wrangler.jsonc` | `route-atlas-bgp-publisher` | 认证的 workers.dev 发布入口，绑定同一专用 R2 桶 |
+
+Cloudflare 的路径 Route 优先于同域名的 Custom Domain，因此查询直接进入独立 Worker，不经过网页 SSR。`public/bgp-service.json` 保持 `{"apiBase":""}` 即可使用同源 API。
+
+在自己的 Cloudflare 账户确认 zone 和 R2 桶后，运行 `pnpm run deploy`，会先构建并部署网页，再部署查询与发布 Worker。完整前置条件、安装命令、Workers Builds 设置和首次数据发布步骤见 **[Cloudflare 部署说明](docs/cloudflare-deployment.md)**。提交代码本身不会创建桶或启动真实 BGP 数据采集。
 
 未配置服务时页面明确显示路径库未接通，不展示模拟路径。旧 `/api/paths` 已停用，没有 RIPEstat fallback。现有 `.openai/hosting.json` 仅对应此前的网站托管；个人查询 Worker 使用自己的 Wrangler 配置，两者相互独立。
 
