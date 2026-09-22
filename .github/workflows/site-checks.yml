@@ -27,13 +27,9 @@ jobs:
           cache: pnpm
       - name: Install locked website dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build website and existing static data
-        run: pnpm run build:cloudflare
-      - name: Check website Worker deployment bundle
-        run: pnpm exec wrangler deploy --config dist/server/wrangler.json --dry-run
-      - name: Check BGP query Worker deployment bundle
-        run: pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc --dry-run
-      - name: Test publisher Worker with a local R2 binding
+      - name: Test query and upload routing inside the website Worker
+        run: node --test tests/worker/routing.test.mjs
+      - name: Test publisher with a local R2 binding
         run: pnpm run bgp:publisher:test
-      - name: Check BGP publisher Worker deployment bundle
-        run: pnpm exec wrangler deploy --config workers/bgp-publisher/wrangler.jsonc --dry-run
+      - name: Build and check the single Worker from the root deployment config
+        run: pnpm exec wrangler deploy --dry-run

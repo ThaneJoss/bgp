@@ -1,37 +1,18 @@
 import vinext from "vinext";
+import { readFileSync, rmSync } from "node:fs";
 import { defineConfig } from "vite";
-import hostingConfig from "./.openai/hosting.json";
 import { readExecutionProfile } from "./scripts/execution-profile.mjs";
 import { sites } from "./build/sites-vite-plugin";
 
-const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
-  "00000000-0000-4000-8000-000000000000";
-
-const { d1, r2 } = hostingConfig;
-
-// macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
+// Keep production bindings and routes in the deployment configuration. Vite
+// consumes the source entry, while Wrangler deploys its generated output.
+const deployment = JSON.parse(readFileSync(new URL("./wrangler.jsonc", import.meta.url), "utf8"));
+const runtimeConfig = Object.fromEntries(Object.entries(deployment).filter(([key]) =>
+  !["$schema", "build", "main", "no_bundle", "find_additional_modules", "rules", "assets"].includes(key)
+));
+const assetConfig = Object.fromEntries(Object.entries(deployment.assets).filter(([key]) => key !== "directory"));
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const managedLinux = readExecutionProfile() === "managed-linux";
-
-const localBindingConfig = {
-  d1_databases: d1
-    ? [
-        {
-          binding: d1,
-          database_name: "site-creator-d1",
-          database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
-        },
-      ]
-    : [],
-  r2_buckets: r2
-    ? [
-        {
-          binding: r2,
-          bucket_name: "site-creator-r2",
-        },
-      ]
-    : [],
-};
 
 export default defineConfig(async () => {
   // Use Miniflare's local Request.cf placeholder unless fetching is requested.
@@ -57,11 +38,21 @@ export default defineConfig(async () => {
       vinext(),
       sites({ mockAuth: !managedLinux }),
       cloudflare({
-        configPath: "./wrangler.jsonc",
+        configPath: "./wrangler.vite.jsonc",
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
-        config: localBindingConfig,
+        config: { ...runtimeConfig, assets: assetConfig },
       }),
+      {
+        name: "bgp-use-source-deploy-config",
+        apply: "build",
+        enforce: "post",
+        closeBundle() {
+          // Default Wrangler commands must rebuild from source on every run,
+          // instead of following Vite's redirect to yesterday's output.
+          rmSync(new URL("./.wrangler/deploy/config.json", import.meta.url), { force: true });
+        },
+      },
     ],
   };
 });

@@ -27,11 +27,13 @@ Records are split into logical pages of at most 1024 records, read using R2 byte
 
 Query: binary search index for last start <= target, range-read just that page, binary search its records, range-read at most 1024 path bytes. Matched prefix is target masked to winning prefix length. At most three reads/IP plus shared latest manifest; index buffers can be reused within a two-IP request. Index size hard cap 256 KiB/family, latest manifest cap 64 KiB, maximum 5 peers, max paths 256 ASNs. Builder must fail if limits are exceeded; cannot truncate silently. The query is bounded binary search, not general O(1).
 
-API served by a separate minimal Worker (outside React SSR):
+API served by the query handler inside the unified `bgp` Worker, dispatched
+directly before webpage handling. Deployment uses the repository-root
+`wrangler.jsonc`:
 - GET /api/bgp/manifest -> public snapshot/collector/peer metadata (no file inventory required)
 - GET /api/bgp/compare?a=<IP>&b=<IP>&peer=<id optional> -> {snapshotId,dataTime,source,collector,peer,results:[PathResult,PathResult]}
 - GET /api/bgp/path?ip=<IP>&peer=<id optional> -> PathResult
 PathResult = {ip,fetchedAt,dataTime,source,snapshotId,status:"ok"|"not_observed"|"unsupported_path"|"missing_family",routes:[{rrc,location,peer,prefix,path,observedAt}]}
 Both compare results use exactly one manifest and one peer. Missing R2 data is HTTP 503, malformed input 400, invalid peer 404. Never fetch a public BGP JSON API. Prefix/path absence is not network unreachability.
 
-CI: download one authorized collector RIB only after opt-in, parse/filter peers, build files+manifest, diff against prior normalized routes, upload versioned objects first, validate sizes/hashes, publish latest.json last. Never auto-run download on PR or installation. Scheduled pipeline requires explicit enable variable.
+CI: GitHub Actions downloads the configured collector RIB on its daily schedule or manual dispatch, parses/filters peers, builds files and the manifest, diffs against prior normalized routes, then uploads validated versioned objects through the authenticated `/_ingest` endpoint before publishing latest.json last. PR checks and dependency installation never download the RIB. There is no separate enable variable.

@@ -25,11 +25,11 @@ configurable anomaly guard, not proof that the routing data is complete.
 
 `bgp-daily.yml` runs on a GitHub-hosted Ubuntu runner. That runner downloads
 the RouteViews RIB, parses MRT, builds indices and diffs, validates the output,
-and uploads the generated files through the authenticated publication Worker
-to the Cloudflare R2 bucket `route-atlas-bgp`. R2 stores the published library;
-Cloudflare hosts the frontend and the query Worker, which only reads that
-library. The publication Worker only transfers generated objects through its
-native `BGP_BUCKET` binding; it does not download or parse the upstream RIB.
+and uploads the generated files through the authenticated `/_ingest` endpoint of the `bgp` Worker
+to the Cloudflare R2 bucket `route-atlas-bgp`. R2 stores the published library.
+One Cloudflare Worker, `bgp`, hosts the frontend, query handler and publication
+endpoint. Queries only read that library. The publication handler transfers
+generated objects through its native `BGP_BUCKET` binding; it does not download or parse the upstream RIB.
 Neither frontend builds nor query requests download the upstream RIB.
 Frontend npm/pnpm installation downloads JavaScript dependencies, not BGP data.
 
@@ -47,23 +47,22 @@ Worker deployment and real Cloudflare CPU measurements are separate steps.
 
 ## Required GitHub configuration
 
-The dedicated **R2 Standard** bucket is `route-atlas-bgp`. Both the query
-Worker and `route-atlas-bgp-publisher` bind it as `BGP_BUCKET`. The query
-handler only reads data; the separate publication Worker requires a bearer
-secret for all read, list, put, compose and delete operations.
+The dedicated **R2 Standard** bucket is `route-atlas-bgp`. The `bgp`
+Worker binds it as `BGP_BUCKET`. The query handler only reads data; the
+`/_ingest` publication endpoint requires a bearer secret for all read, list, put, compose and delete operations.
 
 Configure the following in the GitHub repository:
 
 | Kind | Name | Value |
 |---|---|---|
 | Variable | `R2_BUCKET` | `route-atlas-bgp` |
-| Variable | `R2_PUBLISH_URL` | Deployed publication Worker's HTTPS URL |
-| Secret | `R2_PUBLISH_TOKEN` | Same value as the publication Worker's `INGEST_TOKEN` secret |
+| Variable | `R2_PUBLISH_URL` | `https://bgp.thanejoss.com/_ingest` |
+| Secret | `R2_PUBLISH_TOKEN` | Same value as the `bgp` Worker's `INGEST_TOKEN` secret |
 
 Set the Worker secret with `wrangler secret put INGEST_TOKEN --config
-workers/bgp-publisher/wrangler.jsonc`. Keep its value in secrets storage only.
+wrangler.jsonc`. Keep its value in secrets storage only.
 GitHub needs neither R2 S3 credentials nor a Cloudflare account-wide API token.
-The publication Worker uses the R2 binding; `R2_ACCOUNT_ID` is not required.
+The publication handler uses the R2 binding; `R2_ACCOUNT_ID` is not required.
 A local Wrangler login does not configure the GitHub Variables or Secrets.
 Once configured, run `BGP daily snapshot` from GitHub Actions for the first
 publication; subsequent scheduled runs use the same settings.
@@ -111,7 +110,7 @@ build scratch live only in `_bgp/`; the cleanup step removes them. They are not
 committed, cached, or uploaded as GitHub Actions artifacts. The publisher HTTP
 client, parser and validator use Python's standard library. Offline Node tests
 require no npm installation; `site-checks.yml` installs the locked dependencies
-and tests the publication Worker against Miniflare's local R2 implementation.
+and tests the publication handler against Miniflare's local R2 implementation.
 
 ## Publication and retention
 
@@ -127,7 +126,7 @@ Publication occurs in this order:
    object is never overwritten. Every upload has a server-checked Content-MD5,
    SHA-256 metadata, and a subsequent HEAD size/metadata verification. Files
    larger than 64 MiB are uploaded in 64 MiB temporary `_uploads/` parts, then
-   streamed into one conditional R2 object by the publication Worker. The client
+   streamed into one conditional R2 object by the publication handler. The client
    removes temporary parts after the operation; query-file layout is unchanged.
    The bucket lifecycle rule expires `_uploads/` objects after one day to clean
    up parts left by forcibly interrupted runs; published snapshots are excluded.
@@ -171,7 +170,7 @@ not a guarantee that account-wide R2 charges cannot occur. Changing thresholds
 or retention is a conscious configuration change, not an automatic recovery.
 
 There are only a small number of packed files per snapshot, rather than one R2
-object per route. The publication Worker maps conditional headers, checksums
+object per route. The publication handler maps conditional headers, checksums
 and metadata to the [native R2 binding API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/).
 
 ## Local verification without downloads
