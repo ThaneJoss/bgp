@@ -1,15 +1,10 @@
-name: BGP daily snapshot (explicit opt-in)
+name: BGP daily snapshot
 
 on:
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
     inputs:
-      confirm_download_and_publish:
-        description: 'Download one official HKIX RIB and publish to your configured R2 bucket'
-        required: true
-        default: false
-        type: boolean
       snapshot_date:
         description: 'Optional UTC date YYYY-MM-DD; blank means today, always the 00:00 RIB'
         required: false
@@ -26,9 +21,6 @@ concurrency:
 
 jobs:
   ingest:
-    if: >-
-      (github.event_name == 'schedule' && vars.BGP_INGEST_ENABLED == 'true') ||
-      (github.event_name == 'workflow_dispatch' && inputs.confirm_download_and_publish == true)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:

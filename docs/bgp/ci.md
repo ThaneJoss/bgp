@@ -21,25 +21,28 @@ Before publication, each existing session/family must also retain at least
 larger decrease stops the update and keeps the previous pointer. This is a
 configurable anomaly guard, not proof that the routing data is complete.
 
-## Default state: no dataset downloads
+## Execution location and triggers
 
-Committing these workflows or opening a pull request does **not** download a
-production RIB, run ingestion, upload to R2, or deploy a Worker.
+`bgp-daily.yml` runs on a GitHub-hosted Ubuntu runner. That runner downloads
+the RouteViews RIB, parses MRT, builds indices and diffs, validates the output,
+and uploads the generated files to R2. R2 stores the published library;
+Cloudflare hosts the frontend and the query Worker, which only reads that
+library. Neither frontend builds nor query requests download the upstream RIB.
+Frontend npm/pnpm installation downloads JavaScript dependencies, not BGP data.
 
 * `bgp-checks.yml` runs only local synthetic Python/JavaScript correctness tests
   and the synthetic query benchmark. It does not need cloud credentials.
-* `bgp-daily.yml` is skipped on the schedule unless the repository variable
-  `BGP_INGEST_ENABLED` is exactly `true`.
-* A manual run requires its `confirm_download_and_publish` checkbox to be
-  explicitly selected. Leaving it unchecked skips the job, even if the daily
-  enable variable is already set.
-* The downloader additionally requires its `--allow-download` command-line flag;
-  the publisher requires `--allow-write`. Importing either module performs no IO.
+* `BGP daily snapshot` runs daily at 03:17 UTC and can also be run manually
+  with an optional snapshot date. There is no separate enable variable or
+  confirmation checkbox.
+* The workflow passes the downloader's `--allow-download` and publisher's
+  `--allow-write` flags. Importing either module performs no IO.
+* CAIDA topology assets are committed static snapshots. This daily workflow
+  updates the RouteViews path library only; CAIDA has no scheduled workflow.
 
-No production input was downloaded while implementing these files. Deployment
-and real Cloudflare CPU measurements remain separate, explicitly run steps.
+Worker deployment and real Cloudflare CPU measurements are separate steps.
 
-## Prerequisites for a future enabled run
+## Required GitHub configuration
 
 Use a dedicated **R2 Standard** bucket for this path library. Give the R2 token
 object read/write permissions scoped to this bucket. The publisher needs read,
@@ -55,7 +58,10 @@ Configure the following in the GitHub repository:
 | Variable | `R2_BUCKET` | Existing dedicated bucket name |
 | Secret | `R2_ACCESS_KEY_ID` | R2 S3 API access key |
 | Secret | `R2_SECRET_ACCESS_KEY` | Corresponding R2 S3 secret |
-| Variable | `BGP_INGEST_ENABLED` | Leave unset initially; `true` enables future daily runs |
+
+A local Wrangler login does not configure these GitHub Variables or Secrets.
+Once configured, run `BGP daily snapshot` from GitHub Actions for the first
+publication; subsequent scheduled runs use the same settings.
 
 No secret is printed. Missing configuration stops the workflow **before the
 upstream RIB download**. The workflow does not create a bucket or enable billing.

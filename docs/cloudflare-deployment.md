@@ -1,6 +1,6 @@
 # 部署到 bgp.thanejoss.com
 
-本项目部署为两个 Cloudflare **Workers**。网页使用 Vinext / Vite 构建，BGP 查询使用独立 Worker 读取 R2。
+本项目部署为两个 Cloudflare **Workers**。网页使用 Vinext / Vite 构建，BGP 查询使用独立 Worker 读取 R2。RouteViews 数据下载、MRT 解析与路径库构建都在 GitHub Actions runner 执行，R2 仅存储生成结果。Cloudflare 的前端构建会安装 npm/pnpm 依赖，不会下载或解析原始路由数据。
 
 | 请求 | Worker | 配置 |
 | --- | --- | --- |
@@ -66,8 +66,15 @@ pnpm run deploy
 | 根目录 | `/` | `/` |
 | 构建命令 | `pnpm run build:cloudflare` | 留空 |
 | 部署命令 | `pnpm exec wrangler deploy` | `pnpm exec wrangler deploy --config workers/bgp/wrangler.jsonc` |
+| 非生产分支部署命令 | `pnpm exec wrangler versions upload` | `pnpm exec wrangler versions upload --config workers/bgp/wrangler.jsonc` |
 
-构建环境使用支持的 Node.js 和项目指定的 pnpm，安装依赖时使用锁文件。首次先完成网页部署，确保域名 DNS 已创建，再部署 API。每个 Builds 项目只部署对应 Worker；本地使用的组合命令 `pnpm run deploy` 不用于这两个项目的部署命令。
+构建环境通过仓库的 `.node-version` 使用 Node.js 22.23.2。在两个 Builds 项目的 **Settings → Build → Build variables and secrets** 设置 `PNPM_VERSION=11.25.0` 和 `SHARP_IGNORE_GLOBAL_LIBVIPS=1`，安装依赖时使用锁文件。后者让 sharp 使用其预编译依赖，避免构建镜像自带的 libvips 改变安装行为。Cloudflare 支持的工具版本选择方式见[构建镜像文档](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/)。
+
+本项目的网页使用 Vinext，按表格设置构建和部署命令。控制台若按 `next` 依赖自动填入 OpenNext 的构建命令，需要替换为 `pnpm run build:cloudflare`。首次先完成网页部署，确保域名 DNS 已创建，再部署 API。每个 Builds 项目只部署对应 Worker；本地使用的组合命令 `pnpm run deploy` 不用于这两个项目的部署命令。
+
+`.github/workflows/site-checks.yml` 会在 PR 和 `main` 推送时安装锁定依赖、构建完整网页，并对两个 Worker 执行 Wrangler dry-run；日志可直接在 GitHub Actions 查看。这个检查不需要 Cloudflare 或 R2 凭据，也不下载原始 BGP 数据。
+
+日志中的 `downloaded 628` 是 npm/pnpm 依赖包数量，`postinstall: Done` 表示对应依赖安装完成。`build ssr environment` 和路由表说明源码构建已经完成。若之后失败，需要检查紧接着的 Wrangler 部署报错；这些日志本身不能说明数据采集失败。
 
 `.openai/hosting.json` 是已有托管元数据；个人 Cloudflare 部署使用 Wrangler 配置和自己的账户。
 
@@ -77,9 +84,11 @@ pnpm run deploy
 
 - GitHub Variables：`R2_ACCOUNT_ID`、`R2_BUCKET`。
 - GitHub Secrets：`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`。
-- 首次手动运行 `BGP daily snapshot (explicit opt-in)`，明确勾选下载与发布确认。
+- 首次手动运行 `BGP daily snapshot`，可选填 UTC 快照日期；留空使用当天的 00:00 UTC RIB。
 
-首份快照成功后，再按需将 `BGP_INGEST_ENABLED` 设为 `true` 启用每日更新。Worker 部署不会触发数据任务。
+数据任务每天 03:17 UTC 自动运行，无需额外启用变量或确认勾选。缺少上述 GitHub 配置时会在下载前失败；本地 Wrangler 已登录不代表 GitHub runner 已配置 R2 凭据。Worker 部署不会触发数据任务。
+
+全球拓扑使用仓库中已提交的 CAIDA 静态快照，当前未配置 CAIDA 自动更新 workflow；前端构建直接打包该快照。
 
 `public/bgp-service.json` 的 `apiBase` 保持空字符串，查询服务的 `APP_ORIGIN` 已设为 `https://bgp.thanejoss.com`。只有域名绑定 API Route 后，该同源配置才会访问查询 Worker；网页的 `workers.dev` 预览地址仍会返回未接通的 API fallback。
 

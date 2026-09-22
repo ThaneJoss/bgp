@@ -1,6 +1,6 @@
 # bgp / AS Atlas
 
-每日离线生成自有 BGP 路径库，Cloudflare Worker 查询时只读取自己的 R2 数据。前端保留全球 AS 拓扑与两 IP 路径对比。**提交代码和运行测试不会下载真实路由数据；定时采集默认关闭。**
+GitHub Actions 每日下载 RouteViews 数据、解析并生成自有 BGP 路径库，上传到 R2 存储。Cloudflare 负责托管网页和查询 Worker；查询时只读取已生成的 R2 数据。前端保留全球 AS 拓扑与两 IP 路径对比。提交代码和运行合成测试不会下载真实路由数据；数据任务按每日计划或手动触发执行。
 
 ## 数据范围
 
@@ -20,7 +20,8 @@
 | `scripts/bgp/build_snapshot.py` | 两遍输入扫描、SQLite 外排、LPM 区间、路径去重、每日 diff |
 | `workers/bgp/src/index.mjs` | 独立的极简查询 Worker，无 React / SSR 导入 |
 | `.github/workflows/bgp-checks.yml` | 合成测试与本地基准，不访问 BGP 上游 |
-| `.github/workflows/bgp-daily.yml` | 显式启用后下载每日 00:00 UTC RIB，构建并发布 |
+| `.github/workflows/site-checks.yml` | 安装前端依赖、构建网页并检查两个 Worker 的部署包 |
+| `.github/workflows/bgp-daily.yml` | 在 GitHub runner 下载每日 00:00 UTC RIB，构建并发布 |
 | `public/bgp-service.json` | 前端查询 API 地址；空字符串表示同源 `/api/bgp/*` |
 | `docs/bgp/ci.md` | CI 变量、Secrets、首次发布与保留策略 |
 | `docs/bgp/format.md` | 二进制索引与 API 约定 |
@@ -63,11 +64,11 @@ python3 scripts/bgp/build_snapshot.py \
   --data-time 2026-09-22T00:00:00Z
 ```
 
-随后按 `docs/bgp/ci.md` 配置自己的 R2，并手动确认首次下载/发布。`BGP_INGEST_ENABLED` 未设为 `true` 时每日任务不采集；手动 workflow 也要求明确勾选确认。这里没有启动任何真实数据任务。
+按 `docs/bgp/ci.md` 配置 GitHub 的 R2 Variables 与 Secrets 后，可手动运行 `BGP daily snapshot` 发布首份快照；每日 03:17 UTC 自动更新，无需额外启用变量或确认勾选。缺少 R2 配置时任务会在下载前报错。
 
 ## 前端与个人 Cloudflare 部署
 
-前端沿用现有 React/Vinext 工程和锁文件，安装依赖后 `npm run dev` / `npm run build`。拓扑视图的 CAIDA 静态数据与每日路径库独立，不会因 BGP CI 更新而改变。
+前端沿用现有 React/Vinext 工程和锁文件，安装依赖后 `npm run dev` / `npm run build`。拓扑视图使用已提交的 CAIDA 静态快照，当前没有自动更新 workflow，不会因 BGP CI 更新而改变。前端构建只打包这些产物；构建中的 npm/pnpm 下载是 JavaScript 依赖安装，不是 CAIDA 或 RouteViews 数据采集。
 
 仓库已提供 `bgp.thanejoss.com` 的两份 Wrangler 配置：
 
