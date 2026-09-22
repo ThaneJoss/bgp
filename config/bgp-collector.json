@@ -1,0 +1,29 @@
+{
+  "id": "hkix.hkg",
+  "location": "Hong Kong, HKIX",
+  "sourceUrl": "https://archive.routeviews.org/hkix.hkg/bgpdata/",
+  "selection": {
+    "maxPeers": 2,
+    "preferredAsns": [3491],
+    "allowedPeers": [
+      { "asn": 3491, "address": "123.255.90.244" },
+      { "asn": 3491, "address": "2001:7fa:0:1::ca28:a0f4" }
+    ],
+    "minPrefixes": { "4": 800000, "6": 150000 },
+    "requireFamilies": [4, 6]
+  },
+  "download": {
+    "maxBytes": 1073741824,
+    "timeoutSeconds": 60,
+    "attempts": 3
+  },
+  "publish": {
+    "maxSnapshotBytes": 2147483648,
+    "maxNormalizedBytes": 1073741824,
+    "maxDiffBytes": 268435456,
+    "maxManagedBytes": 8589934592,
+    "minPreviousPrefixRatio": 0.9,
+    "keepSnapshots": 2,
+    "keepDiffs": 7
+  }
+}

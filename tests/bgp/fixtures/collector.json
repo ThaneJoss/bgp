@@ -1,0 +1,11 @@
+{
+  "id": "fixture",
+  "location": "Synthetic test collector",
+  "sourceUrl": "https://example.invalid/synthetic-only/",
+  "selection": {
+    "maxPeers": 3,
+    "preferredAsns": [3491],
+    "minPrefixes": {"4": 1, "6": 1},
+    "requireFamilies": [4]
+  }
+}

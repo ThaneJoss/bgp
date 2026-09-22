@@ -1,0 +1,18 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "route-atlas-bgp",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-09-22",
+  "workers_dev": true,
+  "vars": {
+    "APP_ORIGIN": "https://route-atlas-lab.thanejoss.chatgpt.site"
+  },
+  "r2_buckets": [
+    { "binding": "BGP_BUCKET", "bucket_name": "route-atlas-bgp" }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "enabled": true, "invocation_logs": true }
+  }
+}

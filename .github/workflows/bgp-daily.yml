@@ -1,0 +1,113 @@
+name: BGP daily snapshot (explicit opt-in)
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      confirm_download_and_publish:
+        description: 'Download one official HKIX RIB and publish to your configured R2 bucket'
+        required: true
+        default: false
+        type: boolean
+      snapshot_date:
+        description: 'Optional UTC date YYYY-MM-DD; blank means today, always the 00:00 RIB'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# All invocations publish to the same dataset. Queuing, plus an R2 ETag
+# conditional pointer write, prevents overlapping/older runs replacing latest.
+concurrency:
+  group: bgp-hkix-daily-publication
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    if: >-
+      (github.event_name == 'schedule' && vars.BGP_INGEST_ENABLED == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.confirm_download_and_publish == true)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      REQUESTED_DATE: ${{ inputs.snapshot_date }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fail before download if R2 settings are missing
+        run: python scripts/bgp/publish_snapshot.py check-env
+      - name: Install pinned publisher client
+        run: python -m pip install --disable-pip-version-check 'boto3==1.43.98'
+      - name: Fetch previously published normalized routes for the diff
+        run: python scripts/bgp/publish_snapshot.py fetch-previous --directory _bgp/previous
+      - name: Pin one exact snapshot and reject older dates
+        id: target
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts/bgp')
+          from download_snapshot import snapshot_metadata
+          metadata = snapshot_metadata(os.environ.get('REQUESTED_DATE') or None)
+          previous = json.loads(Path('_bgp/previous/previous.json').read_text())
+          current = previous['snapshotId']
+          if current and metadata['snapshotId'] < current:
+              raise SystemExit('Requested snapshot is older than the current published snapshot')
+          skip = current == metadata['snapshotId']
+          Path('_bgp/target.json').write_text(json.dumps(metadata))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"skip={'true' if skip else 'false'}\n")
+          print('Already published; input download skipped' if skip else f"Selected {metadata['snapshotId']}")
+          PY
+      - name: Download only the selected official RIB (bounded and atomic)
+        if: steps.target.outputs.skip != 'true'
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+          metadata = json.loads(Path('_bgp/target.json').read_text())
+          subprocess.run([sys.executable, 'scripts/bgp/download_snapshot.py',
+                         '--date', metadata['dataTime'][:10], '--output', '_bgp/input.mrt.bz2',
+                         '--metadata', '_bgp/input.json', '--allow-download'], check=True)
+          PY
+      - name: Build bounded query files and a streaming daily diff
+        if: steps.target.outputs.skip != 'true'
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+          source = json.loads(Path('_bgp/input.json').read_text())
+          previous = json.loads(Path('_bgp/previous/previous.json').read_text())
+          command = [sys.executable, 'scripts/bgp/build_snapshot.py',
+                     '--input', '_bgp/input.mrt.bz2', '--output', '_bgp/snapshot',
+                     '--config', 'config/bgp-collector.json',
+                     '--snapshot-id', source['snapshotId'], '--data-time', source['dataTime']]
+          if previous['normalizedFile']:
+              command += ['--previous', previous['normalizedFile'],
+                          '--previous-snapshot-id', previous['snapshotId']]
+          subprocess.run(command, check=True)
+          PY
+      - name: Verify hashes, storage budgets, and Worker index limits
+        if: steps.target.outputs.skip != 'true'
+        run: python scripts/bgp/validate_snapshot.py --directory _bgp/snapshot
+      - name: Publish immutable files, conditionally advance pointer, retain two snapshots
+        if: steps.target.outputs.skip != 'true'
+        run: >-
+          python scripts/bgp/publish_snapshot.py publish
+          --directory _bgp/snapshot
+          --previous-descriptor _bgp/previous/previous.json
+          --allow-write
+      - name: Remove ephemeral raw data and build state
+        if: always()
+        run: python -c "import shutil; shutil.rmtree('_bgp', ignore_errors=True)"
