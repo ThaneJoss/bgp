@@ -1,27 +1,21 @@
-name: BGP offline checks
+name: Browser BGP checks
 
 on:
   pull_request:
     paths:
-      - 'scripts/bgp/**'
-      - 'workers/bgp/**'
-      - 'workers/bgp-publisher/**'
-      - 'tests/bgp/**'
+      - 'lib/bgp/**'
+      - 'lib/bgp-client.ts'
       - 'src/**'
-      - 'tests/worker/**'
-      - 'config/bgp-collector.json'
-      - '.github/workflows/bgp-*.yml'
+      - 'tests/**'
+      - '.github/workflows/bgp-checks.yml'
   push:
     branches: [main]
     paths:
-      - 'scripts/bgp/**'
-      - 'workers/bgp/**'
-      - 'workers/bgp-publisher/**'
-      - 'tests/bgp/**'
+      - 'lib/bgp/**'
+      - 'lib/bgp-client.ts'
       - 'src/**'
-      - 'tests/worker/**'
-      - 'config/bgp-collector.json'
-      - '.github/workflows/bgp-*.yml'
+      - 'tests/**'
+      - '.github/workflows/bgp-checks.yml'
   workflow_dispatch:
 
 permissions:
@@ -40,13 +34,6 @@ jobs:
           python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Parser and pipeline tests (generated fixtures and mocked IO only)
-        run: |
-          python -m unittest discover -s tests/bgp -p 'test_build.py' -v
-          python -m unittest discover -s scripts/bgp -p 'test_pipeline.py' -v
-          python -m unittest discover -s scripts/bgp -p 'test_r2_http_client.py' -v
-      - name: Query, CPU gate, and Python-to-Worker tests
-        run: node --test tests/bgp/query.test.mjs scripts/bgp/check-worker-cpu.test.mjs scripts/bgp/test-e2e.mjs tests/worker/routing.test.mjs
-      - name: Synthetic query benchmark (local timing, not Cloudflare CPU certification)
-        run: node scripts/bgp/bench-query.mjs
+          node-version-file: .node-version
+      - name: Stream decoding, browser queries and stateless relay (no upstream downloads)
+        run: node --test tests/bgp/*.test.mjs tests/worker/*.test.mjs

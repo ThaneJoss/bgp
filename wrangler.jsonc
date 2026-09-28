@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "bgp",
   "main": "./dist/server/index.js",
-  "compatibility_date": "2026-09-22",
+  "compatibility_date": "2026-05-15",
   "compatibility_flags": [
     "nodejs_compat"
   ],
@@ -38,12 +38,6 @@
   "build": {
     "command": "node node_modules/vite/bin/vite.js build"
   },
-  "r2_buckets": [
-    {
-      "binding": "BGP_BUCKET",
-      "bucket_name": "route-atlas-bgp"
-    }
-  ],
   "vars": {
     "APP_ORIGIN": "https://bgp.thanejoss.com"
   }
