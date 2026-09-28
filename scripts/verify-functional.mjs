@@ -3,41 +3,74 @@ import react from '@vitejs/plugin-react';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+
 const vite = await createServer({ configFile: false, plugins: [react()], server: { middlewareMode: true }, appType: 'custom', resolve: { alias: { '@': process.cwd() } } });
+const originalFetch = globalThis.fetch, originalWorker = globalThis.Worker;
+class MockWorker {
+  static instances = [];
+  constructor() { this.messages = []; MockWorker.instances.push(this); }
+  postMessage(message) { this.messages.push(message); }
+  terminate() { this.terminated = true; }
+  emit(data) { this.onmessage?.({ data }); }
+}
 try {
- const {default:Home} = await vite.ssrLoadModule('/app/page.tsx');
- const {default:Paths} = await vite.ssrLoadModule('/app/paths/page.tsx');
- const normal = renderToString(createElement(Home));
- const paths = renderToString(createElement(Paths));
- assert(normal.includes('href="/paths"')); assert(paths.includes('两个目标，在哪分路')); assert(paths.includes('目标 IP A')); assert(paths.includes('value="1.1.1.1"')); assert(!paths.includes('GLOBAL NETWORK EXPLORER'));
- console.log('PASS: direct /paths SSR renders query controls, both native navigation links, and no topology view.');
- const {default:MapExplorer}=await vite.ssrLoadModule('/components/map-explorer.tsx');
- const overview=JSON.parse(fs.readFileSync('public/data/explorer/overview.json','utf8'));
- const map=renderToString(createElement(MapExplorer,{snapshot:overview}));assert(map.includes('80,510'));assert(map.includes('定位任意 ASN'));
- console.log('PASS: map overview SSR renders full snapshot coverage and accessible search/list controls.');
- const {GET:legacy}=await vite.ssrLoadModule('/app/api/paths/route.ts');
- const {GET:unconfigured}=await vite.ssrLoadModule('/app/api/bgp/[...path]/route.ts');
- const originalFetch=globalThis.fetch;
- try {
-  globalThis.fetch=async()=>{throw Error('No upstream access allowed')};
-  assert.equal((await legacy()).status,410);
-  assert.equal((await unconfigured()).status,503);
-  console.log('PASS: retired API and unconfigured fallback never request a public BGP backend.');
-  const {compareBGPPaths,getBGPMetadata}=await vite.ssrLoadModule('/lib/bgp-client.ts');
-  let inconsistent=false;const calls=[];
-  globalThis.fetch=async(input)=>{
-   const url=String(input);calls.push(url);
-   if(url==='/bgp-service.json')return Response.json({apiBase:''});
-   if(url==='/api/bgp/manifest')return Response.json({snapshotId:'test',defaultPeer:'p0',peers:[{id:'p0',asn:64500,address:'192.0.2.1',families:[4]}]});
-   assert(url.startsWith('/api/bgp/compare?'));
-   return Response.json({snapshotId:'test',results:['1.1.1.1','8.8.8.8'].map(ip=>({ip,snapshotId:inconsistent?'wrong':'test',status:'ok',routes:[{path:[64500,64500,13335]}]}))});
-  };
-  assert.equal((await getBGPMetadata()).defaultPeer,'p0');
-  const result=await compareBGPPaths('1.1.1.1','8.8.8.8','p0');
-  assert.deepEqual(result[0].routes[0].path,[64500,13335]);
-  assert.equal(calls.filter(url=>url.startsWith('/api/bgp/compare?')).length,1);
-  inconsistent=true;await assert.rejects(()=>compareBGPPaths('1.1.1.1','8.8.8.8','p0'));
-  console.log('PASS: frontend makes one two-IP query, displays prepends compactly, and rejects mixed snapshots.');
- } finally {globalThis.fetch=originalFetch;}
-} finally { await vite.close(); }
+  globalThis.fetch = async () => { throw Error('Unexpected data request'); };
+  globalThis.Worker = MockWorker;
+  const { default: Home } = await vite.ssrLoadModule('/app/page.tsx');
+  const { default: Paths } = await vite.ssrLoadModule('/app/paths/page.tsx');
+  const home = renderToString(createElement(Home)), paths = renderToString(createElement(Paths));
+  assert(home.includes('获取拓扑数据')); assert(paths.includes('获取 BGP 数据'));
+  assert(paths.includes('导入本地文件')); assert(paths.includes('快照日期（UTC）'));
+  assert(paths.includes('query-button" disabled=""'));
+  assert(paths.includes('href="/paths"')); assert(!paths.includes('GLOBAL NETWORK EXPLORER'));
+  const { GET: legacy } = await vite.ssrLoadModule('/app/api/paths/route.ts');
+  const { GET: retired } = await vite.ssrLoadModule('/app/api/bgp/[...path]/route.ts');
+  assert.equal((await legacy()).status, 410); assert.equal((await retired()).status, 410);
+  const client = await vite.ssrLoadModule('/lib/bgp-client.ts');
+  assert.equal(client.getBGPMetadata(), null);
+  assert.equal(MockWorker.instances.length, 0);
+  await assert.rejects(() => client.compareBGPPaths('1.1.1.1', '8.8.8.8', 'p0'), /获取数据/);
+  console.log('PASS: initial pages show manual controls, block queries and perform no data requests.');
+
+  const meta = { snapshotId: 'test', dataTime: '2026-01-01T00:00:00Z', defaultPeer: 'p0', peers: [], routeCount: 2, collector: { id: 'hkix.hkg', location: 'HKIX' } };
+  let progress;
+  const first = client.loadBGPData({ date: '2026-01-01', onProgress: value => { progress = value; } });
+  const worker = MockWorker.instances[0], id = worker.messages[0].id;
+  assert.equal(worker.messages[0].type, 'load');
+  await assert.rejects(() => client.loadBGPData({ date: '2026-01-01', onProgress() {} }), /已有/);
+  worker.emit({ id, type: 'progress', progress: { downloaded: 10 } });
+  assert.equal(progress.downloaded, 10); assert.equal(client.getBGPMetadata(), null);
+  worker.emit({ id, type: 'ready', metadata: meta });
+  assert.equal(await first, meta);
+  const query = client.compareBGPPaths(' 1.1.1.1 ', '8.8.8.8', 'p0');
+  const request = worker.messages.at(-1);
+  assert.equal(request.a, '1.1.1.1'); assert.equal(request.type, 'compare');
+  worker.emit({ id: request.id, type: 'result', results: [{ status: 'ok' }, { status: 'missing_family' }] });
+  assert.equal((await query)[1].status, 'missing_family');
+
+  const failed = client.loadBGPData({ date: '2026-01-02', onProgress() {} });
+  const failure = MockWorker.instances.at(-1);
+  failure.emit({ id: failure.messages[0].id, type: 'error', error: 'bad CRC' });
+  await assert.rejects(() => failed, /CRC/);
+  assert.equal(failure.terminated, true); assert.equal(worker.terminated, undefined);
+  assert.equal(client.getBGPMetadata(), meta);
+
+  const file = new File(['fixture'], 'rib.bz2');
+  const cancelled = client.loadBGPData({ date: '2026-01-02', file, onProgress() {} });
+  const candidate = MockWorker.instances.at(-1);
+  assert.equal(candidate.messages[0].file, file);
+  client.cancelBGPDownload();
+  await assert.rejects(() => cancelled, { name: 'AbortError' });
+  candidate.emit({ id: candidate.messages[0].id, type: 'ready', metadata: { ...meta, snapshotId: 'late' } });
+  assert.equal(client.getBGPMetadata(), meta);
+  assert.equal(candidate.terminated, true);
+
+  const refreshed = client.loadBGPData({ date: '2026-01-02', onProgress() {} });
+  const replacement = MockWorker.instances.at(-1), next = { ...meta, snapshotId: 'new' };
+  replacement.emit({ id: replacement.messages[0].id, type: 'ready', metadata: next });
+  assert.equal(await refreshed, next); assert.equal(worker.terminated, true);
+  console.log('PASS: progress, local query, duplicate load, file import, cancellation, late messages, failure preservation and atomic refresh.');
+} finally {
+  globalThis.fetch = originalFetch; globalThis.Worker = originalWorker;
+  await vite.close();
+}

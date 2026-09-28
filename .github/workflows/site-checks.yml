@@ -27,9 +27,11 @@ jobs:
           cache: pnpm
       - name: Install locked website dependencies
         run: pnpm install --frozen-lockfile
-      - name: Test query and upload routing inside the website Worker
-        run: node --test tests/worker/routing.test.mjs
-      - name: Test publisher with a local R2 binding
-        run: pnpm run bgp:publisher:test
-      - name: Build and check the single Worker from the root deployment config
+      - name: Check types and browser data lifecycle
+        run: |
+          pnpm exec tsc --noEmit
+          node scripts/verify-functional.mjs
+      - name: Build and check deployment without database or object storage
         run: pnpm exec wrangler deploy --dry-run
+      - name: Exercise the production browser Worker bundle
+        run: node scripts/verify-browser-worker.mjs

@@ -1,106 +1,78 @@
 # bgp / AS Atlas
 
-GitHub Actions 每日下载 RouteViews 数据、解析并生成自有 BGP 路径库，通过 `bgp` Worker 的认证发布入口 `/_ingest` 上传到 Cloudflare R2 桶 `route-atlas-bgp` 存储。单个 Cloudflare Worker `bgp` 负责网页、查询和认证上传；查询时只读取已生成的 R2 数据。前端保留全球 AS 拓扑与两 IP 路径对比。提交代码和运行合成测试不会下载真实路由数据；数据任务按每日计划或手动触发执行。
+AS Atlas 展示全球 AS 拓扑，并在**用户浏览器内**解析 RouteViews 原始数据、比较两个目标 IP 的 BGP 观测路径。项目不使用数据库、R2 路径库或 CI 数据更新任务。
+
+## 使用
+
+1. 全球拓扑页点击「获取拓扑数据」，浏览器读取仓库中现有的 CAIDA JSON 快照，再按需加载图块。
+2. 路径对比页选择 UTC 日期，点击「获取数据」。默认选择昨天的 00:00 UTC RIB，避免当天文件尚未生成。
+3. 浏览器下载 HKIX `.bz2` 原始文件，在 Web Worker 中逐块解压、解析 MRT，并建立内存中的路由索引。页面显示读取量、记录数和路由数，可随时取消。
+4. 解析完成后输入两个 IP、选择同一个真实观测 session，在浏览器内执行最长前缀匹配并绘图。查询不会向服务器发送目标 IP。
+5. 也可以点击「下载原始文件」，再「导入本地文件」。支持 `.bz2`、`.gz` 和未压缩 MRT；导入文件不会上传。
+
+页面首次打开不会下载路由或拓扑数据。没有定时刷新、后台更新、IndexedDB 或 localStorage 数据库。成功加载的数据仅保留在当前页面内存中；站内页签切换保留它，浏览器刷新或关闭页面后清除。重新获取失败或取消时，继续保留当前已加载的数据。
+
+原始 RIB 较大，流量、CPU 和索引内存由用户设备承担。压缩输入限制 1 GiB，解压输入限制 8 GiB，单条 MRT 记录限制 64 MiB，索引最多保存 200 万条路由及 400 万个去重路径 ASN。低内存设备可能需要改用桌面浏览器。
+
+## 为什么有下载转发入口
+
+RouteViews 原站的 CORS 响应只允许其指定的 MRT Explorer 域。本站使用 `GET /api/bgp/download?date=YYYY-MM-DD` **按需转发原始响应流**，让浏览器可以读取字节。服务端只允许固定 HKIX 归档地址，不接受任意 URL；没有解压、MRT 解析、查询、缓存或持久化。
+
+所有下载均由按钮触发。构建和 CI 测试只使用合成数据，不下载真实 BGP 数据。
 
 ## 数据范围
 
-- 唯一采集器：RouteViews **hkix.hkg / 香港 HKIX**。
-- 默认固定 **AS3491 Console Connect/PCCW** 两个 session：IPv4 `123.255.90.244`，IPv6 `2001:7fa:0:1::ca28:a0f4`。
-- 香港采集器及上述 AS 不等于中国大陆内部视角。当前公开 collector 元数据未找到可选的大陆 collector。
-- 两个 session 分开保存，**不会伪造一个共同的双栈 peer**。比较两 IP 时必须是同一个真实 session；缺失的地址族会明确显示。
-- 展示采集器 peer 所见的有序 AS_PATH，不是任意两个 IP 的真实 A→B / B→A traceroute，也不是全球全部可用路径。
-- 原始 AS prepends 在库/API 中保留，前端合并连续重复 AS。AS_SET/confederation 或冲突 ADDPATH 保留其前缀遮盖关系，并返回 `unsupported_path`，不会错误回退到更短前缀。
+- RouteViews **hkix.hkg / 香港 HKIX**，保留 AS3491 Console Connect/PCCW 的两个 session：`123.255.90.244` 和 `2001:7fa:0:1::ca28:a0f4`。
+- 两个 session 分开处理，不会合并成虚构的双栈 peer；缺失地址族会明确显示。
+- 展示的是该观测 session 到目标前缀的 AS_PATH，不是两个 IP 之间的 traceroute。香港采集器不代表中国大陆内部视角。
+- 支持 TABLE_DUMP_V2 IPv4/IPv6 unicast、RIB_GENERIC 和 ADDPATH。连续重复 ASN 仅在绘图时合并。
+- AS_SET、confederation、未解决的 AS_TRANS 或冲突 ADDPATH 标记为 `unsupported_path`，仍遮盖较短前缀，不会错误回退。
+- 文件完全解析并通过结构/压缩 CRC 检查后才切换数据；显示的数据时间取自 MRT 文件头。
+- CAIDA 拓扑仍是仓库中标注日期的静态快照。按钮加载该快照，不会重新采集 CAIDA 原始关系数据。
 
-## 结构
+## 开发与验证
+
+需要 Node 22.13+、pnpm 11 和 Python 3（仅生成压缩测试样本）。
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run bgp:test
+pnpm exec tsc --noEmit
+node scripts/verify-functional.mjs
+pnpm run dev
+pnpm run build:cloudflare
+```
 
 | 路径 | 用途 |
 | --- | --- |
-| `config/bgp-collector.json` | 固定采集器、peer allowlist、覆盖与存储上限 |
-| `scripts/bgp/mrt.py` | 标准库流式 MRT TABLE_DUMP_V2 / gzip / bzip2 解析 |
-| `scripts/bgp/build_snapshot.py` | 两遍输入扫描、SQLite 外排、LPM 区间、路径去重、每日 diff |
-| `workers/bgp/src/index.mjs` | 查询 handler，统一入口优先分派 API 请求 |
-| `workers/bgp-publisher/src/index.mjs` | 认证发布入口，通过原生 R2 binding 存取生成对象，无数据采集或解析 |
-| `scripts/bgp/r2_http_client.py` | GitHub runner 标准库 HTTP 上传客户端，支持大文件分片合成 |
-| `.github/workflows/bgp-checks.yml` | 合成测试与本地基准，不访问 BGP 上游 |
-| `.github/workflows/site-checks.yml` | 安装前端依赖、构建网页、测试本地 R2 发布入口并检查统一 Worker 的部署包 |
-| `.github/workflows/bgp-daily.yml` | 在 GitHub runner 下载每日 00:00 UTC RIB，构建并发布 |
-| `public/bgp-service.json` | 前端查询 API 地址；空字符串表示同源 `/api/bgp/*` |
-| `docs/bgp/ci.md` | CI 变量、Secrets、首次发布与保留策略 |
-| `docs/bgp/format.md` | 二进制索引与 API 约定 |
-| `docs/worker-free-budget.md` | Free CPU 分析、测量结果及线上验收 |
+| `components/bgp-data-controls.tsx` | 获取、日期、进度、取消、本地导入 |
+| `lib/bgp-client.ts` | 浏览器 Worker 生命周期、原子切换与本地查询 |
+| `lib/bgp/browser-worker.mjs` | 浏览器下载、解析与查询消息入口 |
+| `lib/bgp/streams.mjs` / `load.mjs` | 流式读取与 bzip2/gzip 解压 |
+| `lib/bgp/mrt.mjs` / `ip.mjs` | MRT 解析、session 筛选与 IPv4/IPv6 LPM |
+| `lib/bgp/vendor/` | MIT 授权的 bzip2 解码器及许可 |
+| `src/bgp-download.mjs` | 无存储的原始文件转发 |
+| `tests/bgp/` / `tests/worker/` | 合成解析、查询与转发测试 |
 
-发布顺序是：下载固定日期文件 → 解析并检查覆盖 → 生成索引和前日 diff → 校验文件哈希与大小 → 上传不可变版本文件 → 条件写入 `latest.json` → 清理旧版本。失败时查询继续使用上一份已发布快照。完整快照保留两份，独立 diff 默认保留七份；原始 MRT 和 SQLite 工作文件不上传。
+`.github/workflows/bgp-daily.yml`、SQLite 构建/发布脚本、R2 查询/上传 Worker、D1/Drizzle 模板和依赖已移除。CI 只保留代码检查与构建。旧查询/上传入口返回 410。
 
-## 免费额度与验证边界
+## 部署
 
-查询 Worker 每 IP 读取一个稀疏索引、最多 24 KiB 的记录页和最多 1 KiB 的路径。比较两 IP 共用同一份 manifest 和 peer，同地址族最多 6 次 R2 GET，不同地址族最多 7 次。格式上限是 manifest 64 KiB、每族索引 256 KiB、路径最多 256 个 ASN。
-
-这是**有界的索引查询，并非严格 O(1)**。索引/记录使用二分查找，结构验证只遍历有上限的小块。最关键的是用户请求不会扫描或解析整份 RIB，也不会回源公共 JSON API。
-
-Cloudflare Workers Free 的 HTTP CPU 限额是 10 ms。Node 合成基准已有结果，但**不证明 Cloudflare 线上 CPU 达标**，尤其冷启动；没有真实部署日志时必须保持 `cloudflare10msVerified: false`。验收脚本要求至少 1,000 个平台 CPU 样本、p99 ≤ 5 ms、max < 10 ms、没有 CPU 超限/非正常 outcome。详见预算文档。
-
-计算可使用 GitHub 公开仓库的标准免费 Ubuntu runner。R2 Standard 有免费额度，但属于超额计费服务。配置限制整个专用桶在发布临时版本时仍不超过 8 GiB，读写操作也需监控；代码不创建账户、桶或计费订阅。
-
-## 本地检查（不下载 BGP）
-
-需要 Python 3.12+、Node 22.13+。BGP 核心和以下测试只使用标准库：
+沿用根目录 `wrangler.jsonc` 的单个 `bgp` Worker 和 `bgp.thanejoss.com` 域名：
 
 ```sh
-python3 -m unittest discover -s tests/bgp -p 'test_*.py'
-python3 scripts/bgp/test_pipeline.py
-python3 scripts/bgp/test_r2_http_client.py
-node --test tests/bgp/query.test.mjs scripts/bgp/check-worker-cpu.test.mjs
-node scripts/bgp/test-e2e.mjs
-node scripts/bgp/bench-query.mjs --iterations 1000
+pnpm exec wrangler deploy --dry-run
+pnpm run deploy
 ```
 
-跨语言测试把合成前缀交给 Python 构建器，再由真实 Worker handler 查询生成的二进制文件，对照独立最长前缀匹配结果。CI 不依赖 BGP 数据下载或 Cloudflare 凭据即可运行这些检查。安装锁定依赖后，`pnpm run bgp:publisher:test` 额外验证本地原生 R2 binding、条件写入与分片合成。
-
-已有本地 MRT 才运行以下离线构建命令；它本身不联网：
-
-```sh
-python3 scripts/bgp/build_snapshot.py \
-  --input /path/to/local-rib.bz2 \
-  --output _bgp/snapshot \
-  --config config/bgp-collector.json \
-  --snapshot-id 20260922T000000Z \
-  --data-time 2026-09-22T00:00:00Z
-```
-
-按 `docs/bgp/ci.md` 配置 GitHub 的 R2 Variables 与 Secrets 后，可手动运行 `BGP daily snapshot` 发布首份快照；每日 03:17 UTC 自动更新，无需额外启用变量或确认勾选。GitHub 使用 `R2_BUCKET`、`R2_PUBLISH_URL` 与 `R2_PUBLISH_TOKEN`；后者与 `bgp` Worker 的 `INGEST_TOKEN` secret 一致，无需 S3 密钥。缺少发布配置时任务会在下载前报错。
-
-## 前端与个人 Cloudflare 部署
-
-前端沿用现有 React/Vinext 工程和锁文件，安装依赖后 `npm run dev` / `npm run build`。拓扑视图使用已提交的 CAIDA 静态快照，当前没有自动更新 workflow，不会因 BGP CI 更新而改变。前端构建只打包这些产物；构建中的 npm/pnpm 下载是 JavaScript 依赖安装，不是 CAIDA 或 RouteViews 数据采集。
-
-仓库通过根目录 `wrangler.jsonc` 配置单个 Worker `bgp`，由 custom build 调用 Vinext / Vite 生成最终部署包。`pnpm run deploy` 构建并部署，`pnpm run preview:cloudflare` 构建并上传预览版本。该 Worker 使用 Custom Domain `bgp.thanejoss.com`，同时绑定 R2 桶 `route-atlas-bgp` 为 `BGP_BUCKET`。
-
-| 入口 | 用途 |
-| --- | --- |
-| `/` 和静态资源 | 网页 |
-| `/api/bgp/*` | BGP 查询，直接分派到查询 handler |
-| `/_ingest/*` | GitHub Actions 认证上传，使用 `INGEST_TOKEN` |
-
-`public/bgp-service.json` 保持 `{"apiBase":""}`，无需独立 API Route。迁移时应先从旧 `route-atlas-bgp` Worker 解除 `bgp.thanejoss.com/api/bgp/*` Route，否则该 Route 会优先截获查询请求。旧 `route-atlas-bgp` 与 `route-atlas-bgp-publisher` 两个 Worker 由用户自行删除；**同名 R2 桶 `route-atlas-bgp` 必须保留**。
-
-GitHub 的 `R2_PUBLISH_URL` 使用 `https://bgp.thanejoss.com/_ingest`。完整构建部署命令、Workers Builds 设置与数据发布配置见 **[Cloudflare 部署说明](docs/cloudflare-deployment.md)**。变更通过新 PR 审查，部署可以来自该 PR 分支；部署完成不代表 PR 已合并。
-
-未配置数据时页面明确显示路径库未接通，不展示模拟路径。旧 `/api/paths` 已停用，没有 RIPEstat fallback。现有 `.openai/hosting.json` 是此前的网站托管元数据，个人 Cloudflare 部署使用根目录 Wrangler 配置。
-
-线上验收使用从 Cloudflare Workers Logs 导出的真实 invocation 日志：
-
-```sh
-node scripts/bgp/check-worker-cpu.mjs /path/to/invocations.jsonl
-```
-
-不存在平台 CPU 字段、样本不足或出现超限时，脚本拒绝判定通过。还需分别覆盖首次调用、无缓存、IPv4/IPv6、最长路径与数据更新切换。
+无需 D1、R2 binding、`INGEST_TOKEN`、`R2_PUBLISH_TOKEN` 或数据发布 Variables。详见 [Cloudflare 部署说明](docs/cloudflare-deployment.md)。仓库改动不会自动删除旧云资源或 Secrets。
 
 ## 数据来源与署名
 
-- RouteViews HKIX archive: https://archive.routeviews.org/hkix.hkg/bgpdata/
-- RouteViews collector metadata: https://api.routeviews.org/collector/53/
-- RouteViews data attribution/license: https://www.routeviews.org/routeviews/licenses/
-- CAIDA AS Relationships / AS-to-Organization: https://www.caida.org/catalog/datasets/as-relationships/ 和 https://www.caida.org/catalog/datasets/as-organizations/
-- 界面参考：https://github.com/thanejoss/webapps
+- [RouteViews HKIX archive](https://archive.routeviews.org/hkix.hkg/bgpdata/)
+- [RouteViews 数据条款](https://www.routeviews.org/routeviews/licenses/)
+- [CAIDA AS Relationships](https://www.caida.org/catalog/datasets/as-relationships/)
+- [CAIDA AS-to-Organization](https://www.caida.org/catalog/datasets/as-organizations/)
+- 界面参考：[thanejoss/webapps](https://github.com/thanejoss/webapps)
 
-RouteViews 与 CAIDA 数据各自遵循其来源条款。代码仓库不改变数据集的许可。当前 CAIDA 拓扑是明确标注日期的静态快照，关系是推断的 AS 连接，不代表物理链路或带宽。
+各数据集遵循原来源条款。AS 关系属于推断连接，不表示物理链路或带宽。
