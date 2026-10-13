@@ -69,6 +69,8 @@ test('manual topology loading, keyboard navigation and responsive pages', async 
 
   await page.getByRole('button', { name: '来源与说明', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  // Visibility can precede the fade-in finishing; axe needs the final colors.
+  await expect(page.getByRole('dialog')).toHaveCSS('opacity', '1');
   await accessibleAndFits(page);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
