@@ -65,7 +65,7 @@ test('truncated, corrupt, unrelated and oversized files never become ready', asy
   assert.throws(() => table.add(peer, 4, 1n, 32, [3491]), /内存限制/);
 });
 
-test('bzip2 multi-block and concatenated streams match Python; final CRC is mandatory', async () => {
+test('bzip2 multi-block and concatenated streams match original bytes; final CRC is mandatory', async () => {
   let state = 42;
   const raw = Buffer.alloc(1100000);
   for (let i = 0; i < raw.length; i++) { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; raw[i] = state >>> 24; }
