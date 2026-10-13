@@ -36,3 +36,5 @@ JSON 统一 UTF-8，部分旧 Python 输出使用 Unicode 转义，解析后的�
 标准 `pnpm test` 包含现有 MRT/查询/下载转发测试及 tests/data：固定小型 CAIDA 输入、组织与未知 ASN、关系方向、去重/self-loop、社区覆盖/连接性、modularity oracle、合并规则、BFS/图块关系守恒、输出 schema、重跑确定性，以及 mock CAIDA 下载失败/日期选择。测试不发真实外部数据请求，临时输出只在 OS 临时目录。此轮测试在 GitHub 通用 CI 执行。
 
 测试 bzip2 编码采用 compressjs 1.0.3（GPL-2.0-or-later），仅在开发测试依赖中使用，不引入浏览器/Worker bundle；gzip 编码使用 node:zlib。原有 1.1 MB 多块和拼接流仍由独立的现有浏览器解码器验证原始字节与最终 CRC，不再称为与 Python 压缩字节一致。
+
+新增依赖与基线的完整审计归因、压缩替代取舍和剩余既有升级范围见 [依赖归因](dependency-attribution.md)。没有新增已报告告警不等于整个项目的安全验收；强制审计仍失败。
