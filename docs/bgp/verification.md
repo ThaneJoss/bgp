@@ -1,8 +1,8 @@
 # 浏览器模式验证
 
 ```sh
-pnpm run bgp:test
-pnpm exec tsc --noEmit
+pnpm test
+pnpm run typecheck
 node scripts/verify-functional.mjs
 pnpm run build:cloudflare
 ```
@@ -14,6 +14,8 @@ pnpm run build:cloudflare
 - AS4_PATH、AS_SET、confederation、重复 ASN、ADDPATH 冲突及内存边界。
 - 原始字节流转发无需 storage binding；输入日期校验；错误状态；旧查询/上传入口 410。
 - 首次加载不会请求数据；获取成功前禁止查询；取消/失败保留旧数据；新数据成功后原子切换。
+
+标准 `test` 新增固定小型 CAIDA 离线加工验证；算法、schema、确定性和未运行的全量范围见 [Node 数据工具](data-tools.md)。上述生命周期和生产 Worker 脚本继续手动保留，通用 CI 实际覆盖见 [CI 说明](ci.md)。
 
 人工浏览器验收：打开 `/paths`，点击获取并观察进度，取消再重试；导入 HKIX 文件后比较两个 IP，切换观测 session；刷新后应清除内存数据。拓扑页需点击「获取拓扑数据」才加载 CAIDA 快照。
 

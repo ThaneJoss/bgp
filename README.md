@@ -32,12 +32,12 @@ RouteViews 原站的 CORS 响应只允许其指定的 MRT Explorer 域。本站�
 
 ## 开发与验证
 
-需要 Node 22.13+、pnpm 11 和 Python 3（仅生成压缩测试样本）。
+需要 Node 22.13+ 和 pnpm 11。离线 CAIDA 加工与压缩测试样本均由 Node.js 运行，无 Python/pip 依赖。
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm run bgp:test
-pnpm exec tsc --noEmit
+pnpm test
+pnpm run typecheck
 node scripts/verify-functional.mjs
 pnpm run dev
 pnpm run build:cloudflare
@@ -53,8 +53,11 @@ pnpm run build:cloudflare
 | `lib/bgp/vendor/` | MIT 授权的 bzip2 解码器及许可 |
 | `src/bgp-download.mjs` | 无存储的原始文件转发 |
 | `tests/bgp/` / `tests/worker/` | 合成解析、查询与转发测试 |
+| `scripts/data/` / `tests/data/` | Node 离线 CAIDA 加工与固定小图验证 |
 
 `.github/workflows/bgp-daily.yml`、SQLite 构建/发布脚本、R2 查询/上传 Worker、D1/Drizzle 模板和依赖已移除。质量 CI 统一调用通用自动发现模板，实际执行与未执行范围见 [CI 说明](docs/bgp/ci.md)。旧查询/上传入口返回 410。
+
+离线工具只在维护者显式运行时加工本地输入，不进入访客浏览器、构建或 CI 的全量数据流程。命令、schema 与 Louvain/布局实现差异见 [离线数据工具](docs/bgp/data-tools.md)。仓库中的历史静态 JSON 未重新生成。
 
 ## 部署
 

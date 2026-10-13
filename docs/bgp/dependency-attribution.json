@@ -1,0 +1,1115 @@
+{
+  "checkedDate": "2026-10-13",
+  "auditSource": "Official npm registry, complete read-only pnpm audit --json; no dependency installation or functional tests",
+  "refs": {
+    "main": "64ad2bd8c3e0768876f8938b55ad95a89587a8d4",
+    "pr5": "1974d667aeb4f086da45528c12b859df895f1ddc",
+    "head": "a57de50b1811fa363853a15ac42ed5d3936c5704"
+  },
+  "lockSha256": {
+    "main": "cd3406c86be0efd6a392a5aa75b62ee5b08e2624207660413a0ee5605b96faab",
+    "pr5": "cd3406c86be0efd6a392a5aa75b62ee5b08e2624207660413a0ee5605b96faab",
+    "head": "eca20279d468535323c1261c9e20ec1a0a2317b85e2df943ee2ccf2ac8bb3fb2"
+  },
+  "mainPr5LockByteIdentical": true,
+  "existingLockEntries": {
+    "packages": {
+      "unchanged": 775,
+      "removed": [],
+      "changed": [],
+      "added": [
+        "amdefine@1.0.1",
+        "commander@2.8.1",
+        "compressjs@1.0.3",
+        "graceful-readlink@1.0.1",
+        "graphology-communities-louvain@2.0.2",
+        "graphology-indices@0.17.0",
+        "graphology-types@0.24.8",
+        "graphology-utils@2.5.2",
+        "graphology@0.26.0",
+        "mnemonist@0.39.8",
+        "obliterator@2.0.5",
+        "pandemonium@2.4.1"
+      ]
+    },
+    "snapshots": {
+      "unchanged": 775,
+      "removed": [],
+      "changed": [],
+      "added": [
+        "amdefine@1.0.1",
+        "commander@2.8.1",
+        "compressjs@1.0.3",
+        "graceful-readlink@1.0.1",
+        "graphology-communities-louvain@2.0.2(graphology-types@0.24.8)",
+        "graphology-indices@0.17.0(graphology-types@0.24.8)",
+        "graphology-types@0.24.8",
+        "graphology-utils@2.5.2(graphology-types@0.24.8)",
+        "graphology@0.26.0(graphology-types@0.24.8)",
+        "mnemonist@0.39.8",
+        "obliterator@2.0.5",
+        "pandemonium@2.4.1"
+      ]
+    }
+  },
+  "rootDependencyCount": 40,
+  "existingRootVersionsUnchanged": true,
+  "baselineVulnerabilities": {
+    "info": 0,
+    "low": 8,
+    "moderate": 22,
+    "high": 30,
+    "critical": 1
+  },
+  "migrationVulnerabilities": {
+    "info": 0,
+    "low": 8,
+    "moderate": 22,
+    "high": 30,
+    "critical": 1
+  },
+  "completeAdvisoryObjectsEqual": true,
+  "advisoryEntries": 61,
+  "uniqueGHSA": 55,
+  "findingPaths": 894,
+  "allPathsPresentInBaselineWithUnchangedNodes": true,
+  "introducedAdvisories": [],
+  "scopeLimit": "Known advisories at the query date only. The project audit and CI gate still fail.",
+  "advisories": [
+    {
+      "module": "ws",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-58qx-3vcg-4xpx",
+      "url": "https://github.com/advisories/GHSA-58qx-3vcg-4xpx",
+      "vulnerableVersions": ">=8.0.0 <8.20.1",
+      "patchedRange": ">=8.20.1",
+      "installedVersions": [
+        "8.18.0"
+      ],
+      "findingPathCount": 4,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>ws",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>ws"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "esbuild",
+      "severity": "low",
+      "githubAdvisoryId": "GHSA-g7r4-m6w7-qqqr",
+      "url": "https://github.com/advisories/GHSA-g7r4-m6w7-qqqr",
+      "vulnerableVersions": ">=0.27.3 <0.28.1",
+      "patchedRange": ">=0.28.1",
+      "installedVersions": [
+        "0.28.0",
+        "0.27.3"
+      ],
+      "findingPathCount": 24,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>vite>esbuild",
+        ".>@cloudflare/vite-plugin>vite>tsx>esbuild"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "vite",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-v6wh-96g9-6wx3",
+      "url": "https://github.com/advisories/GHSA-v6wh-96g9-6wx3",
+      "vulnerableVersions": ">=8.0.0 <=8.0.15",
+      "patchedRange": ">=8.0.16",
+      "installedVersions": [
+        "8.0.13"
+      ],
+      "findingPathCount": 9,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>vite",
+        ".>@vitejs/plugin-react>vite"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-vmh5-mc38-953g",
+      "url": "https://github.com/advisories/GHSA-vmh5-mc38-953g",
+      "vulnerableVersions": ">=7.23.0 <7.28.0",
+      "patchedRange": ">=7.28.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-p88m-4jfj-68fv",
+      "url": "https://github.com/advisories/GHSA-p88m-4jfj-68fv",
+      "vulnerableVersions": ">=7.0.0 <7.28.0",
+      "patchedRange": ">=7.28.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-vxpw-j846-p89q",
+      "url": "https://github.com/advisories/GHSA-vxpw-j846-p89q",
+      "vulnerableVersions": ">=7.0.0 <7.28.0",
+      "patchedRange": ">=7.28.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-hm92-r4w5-c3mj",
+      "url": "https://github.com/advisories/GHSA-hm92-r4w5-c3mj",
+      "vulnerableVersions": ">=7.23.0 <7.28.0",
+      "patchedRange": ">=7.28.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "low",
+      "githubAdvisoryId": "GHSA-g8m3-5g58-fq7m",
+      "url": "https://github.com/advisories/GHSA-g8m3-5g58-fq7m",
+      "vulnerableVersions": ">=7.0.0 <7.28.0",
+      "patchedRange": ">=7.28.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-pr7r-676h-xcf6",
+      "url": "https://github.com/advisories/GHSA-pr7r-676h-xcf6",
+      "vulnerableVersions": ">=7.0.0 <7.28.0",
+      "patchedRange": ">=7.28.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "js-yaml",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-h67p-54hq-rp68",
+      "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+      "vulnerableVersions": ">=4.0.0 <=4.1.1",
+      "patchedRange": ">=4.1.2",
+      "installedVersions": [
+        "4.1.1"
+      ],
+      "findingPathCount": 27,
+      "examplePaths": [
+        ".>eslint>@eslint/eslintrc>js-yaml",
+        ".>eslint-config-next>@next/eslint-plugin-next>@eslint-community/eslint-utils>eslint>@eslint/eslintrc>js-yaml"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "ws",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-96hv-2xvq-fx4p",
+      "url": "https://github.com/advisories/GHSA-96hv-2xvq-fx4p",
+      "vulnerableVersions": ">=8.0.0 <8.21.0",
+      "patchedRange": ">=8.21.0",
+      "installedVersions": [
+        "8.18.0"
+      ],
+      "findingPathCount": 4,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>ws",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>ws"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "vite",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-fx2h-pf6j-xcff",
+      "url": "https://github.com/advisories/GHSA-fx2h-pf6j-xcff",
+      "vulnerableVersions": ">=8.0.0 <=8.0.15",
+      "patchedRange": ">=8.0.16",
+      "installedVersions": [
+        "8.0.13"
+      ],
+      "findingPathCount": 9,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>vite",
+        ".>@vitejs/plugin-react>vite"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "@babel/core",
+      "severity": "low",
+      "githubAdvisoryId": "GHSA-4x5r-pxfx-6jf8",
+      "url": "https://github.com/advisories/GHSA-4x5r-pxfx-6jf8",
+      "vulnerableVersions": "<=7.29.0",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.29.0"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>next>styled-jsx>@babel/core",
+        ".>eslint-config-next>eslint-plugin-react-hooks>@babel/core"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-3jxr-9vmj-r5cp",
+      "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+      "vulnerableVersions": "<1.1.16",
+      "patchedRange": ">=1.1.16",
+      "installedVersions": [
+        "1.1.14"
+      ],
+      "findingPathCount": 85,
+      "examplePaths": [
+        ".>eslint>@eslint/config-array>minimatch>brace-expansion",
+        ".>eslint>@eslint/eslintrc>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-3jxr-9vmj-r5cp",
+      "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+      "vulnerableVersions": ">=3.0.0 <5.0.7",
+      "patchedRange": ">=5.0.7",
+      "installedVersions": [
+        "5.0.6"
+      ],
+      "findingPathCount": 11,
+      "examplePaths": [
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "js-yaml",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-52cp-r559-cp3m",
+      "url": "https://github.com/advisories/GHSA-52cp-r559-cp3m",
+      "vulnerableVersions": ">=4.0.0 <4.3.0",
+      "patchedRange": ">=4.3.0",
+      "installedVersions": [
+        "4.1.1"
+      ],
+      "findingPathCount": 27,
+      "examplePaths": [
+        ".>eslint>@eslint/eslintrc>js-yaml",
+        ".>eslint-config-next>@next/eslint-plugin-next>@eslint-community/eslint-utils>eslint>@eslint/eslintrc>js-yaml"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "react-server-dom-webpack",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-wx67-qw84-cm4g",
+      "url": "https://github.com/advisories/GHSA-wx67-qw84-cm4g",
+      "vulnerableVersions": ">=19.2.0 <19.2.8",
+      "patchedRange": ">=19.2.8",
+      "installedVersions": [
+        "19.2.6"
+      ],
+      "findingPathCount": 4,
+      "examplePaths": [
+        ".>@vitejs/plugin-rsc>react-server-dom-webpack",
+        ".>react-server-dom-webpack"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-mh99-v99m-4gvg",
+      "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+      "vulnerableVersions": "<1.1.17",
+      "patchedRange": ">=1.1.17",
+      "installedVersions": [
+        "1.1.14"
+      ],
+      "findingPathCount": 85,
+      "examplePaths": [
+        ".>eslint>@eslint/config-array>minimatch>brace-expansion",
+        ".>eslint>@eslint/eslintrc>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-mh99-v99m-4gvg",
+      "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+      "vulnerableVersions": ">=4.0.0 <5.0.8",
+      "patchedRange": ">=5.0.8",
+      "installedVersions": [
+        "5.0.6"
+      ],
+      "findingPathCount": 11,
+      "examplePaths": [
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-8xcm-r25x-g524",
+      "url": "https://github.com/advisories/GHSA-8xcm-r25x-g524",
+      "vulnerableVersions": ">=7.0.0 <7.29.0",
+      "patchedRange": ">=7.29.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-4cwx-7wf7-3272",
+      "url": "https://github.com/advisories/GHSA-4cwx-7wf7-3272",
+      "vulnerableVersions": ">=7.0.0 <7.29.0",
+      "patchedRange": ">=7.29.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-m8rv-5g2x-5cg5",
+      "url": "https://github.com/advisories/GHSA-m8rv-5g2x-5cg5",
+      "vulnerableVersions": ">=7.0.0 <7.29.0",
+      "patchedRange": ">=7.29.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-jr45-8vmc-qm54",
+      "url": "https://github.com/advisories/GHSA-jr45-8vmc-qm54",
+      "vulnerableVersions": ">=7.0.0 <7.29.0",
+      "patchedRange": ">=7.29.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-v3r7-h72x-cjcm",
+      "url": "https://github.com/advisories/GHSA-v3r7-h72x-cjcm",
+      "vulnerableVersions": ">=7.0.0 <7.29.0",
+      "patchedRange": ">=7.29.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-rgw5-rvv9-x895",
+      "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+      "vulnerableVersions": ">=4.0.0 <5.0.9",
+      "patchedRange": ">=5.0.9",
+      "installedVersions": [
+        "5.0.6"
+      ],
+      "findingPathCount": 11,
+      "examplePaths": [
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-rgw5-rvv9-x895",
+      "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+      "vulnerableVersions": "<1.1.18",
+      "patchedRange": ">=1.1.18",
+      "installedVersions": [
+        "1.1.14"
+      ],
+      "findingPathCount": 85,
+      "examplePaths": [
+        ".>eslint>@eslint/config-array>minimatch>brace-expansion",
+        ".>eslint>@eslint/eslintrc>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "low",
+      "githubAdvisoryId": "GHSA-35p6-xmwp-9g52",
+      "url": "https://github.com/advisories/GHSA-35p6-xmwp-9g52",
+      "vulnerableVersions": ">=7.0.0 <7.28.0",
+      "patchedRange": ">=7.28.0",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "js-yaml",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-5p4m-2wfm-xmqj",
+      "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+      "vulnerableVersions": ">=4.0.0 <4.3.1",
+      "patchedRange": ">=4.3.1",
+      "installedVersions": [
+        "4.1.1"
+      ],
+      "findingPathCount": 27,
+      "examplePaths": [
+        ".>eslint>@eslint/eslintrc>js-yaml",
+        ".>eslint-config-next>@next/eslint-plugin-next>@eslint-community/eslint-utils>eslint>@eslint/eslintrc>js-yaml"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "browserslist",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-c83g-rgw3-j3cx",
+      "url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+      "vulnerableVersions": "<=4.28.6",
+      "patchedRange": ">=4.28.7",
+      "installedVersions": [
+        "4.28.2"
+      ],
+      "findingPathCount": 7,
+      "examplePaths": [
+        ".>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist",
+        ".>@vitejs/plugin-rsc>react-server-dom-webpack>webpack>browserslist"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "browserslist",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-73wf-gq98-2v4g",
+      "url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+      "vulnerableVersions": "<=4.28.6",
+      "patchedRange": ">=4.28.7",
+      "installedVersions": [
+        "4.28.2"
+      ],
+      "findingPathCount": 7,
+      "examplePaths": [
+        ".>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist",
+        ".>@vitejs/plugin-rsc>react-server-dom-webpack>webpack>browserslist"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "fflate",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-px8p-9vwx-vf98",
+      "url": "https://github.com/advisories/GHSA-px8p-9vwx-vf98",
+      "vulnerableVersions": ">=0.7.0 <0.7.5",
+      "patchedRange": ">=0.7.5",
+      "installedVersions": [
+        "0.7.4"
+      ],
+      "findingPathCount": 1,
+      "examplePaths": [
+        ".>vinext>@vercel/og>satori>@shuding/opentype.js>fflate"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "baseline-browser-mapping",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-w5vr-8v7q-w6rv",
+      "url": "https://github.com/advisories/GHSA-w5vr-8v7q-w6rv",
+      "vulnerableVersions": ">=2.0.0 <2.11.0",
+      "patchedRange": ">=2.11.0",
+      "installedVersions": [
+        "2.10.30"
+      ],
+      "findingPathCount": 9,
+      "examplePaths": [
+        ".>next>baseline-browser-mapping",
+        ".>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "js-yaml",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-2883-xcg3-v3hh",
+      "url": "https://github.com/advisories/GHSA-2883-xcg3-v3hh",
+      "vulnerableVersions": ">=4.0.0 <4.3.2",
+      "patchedRange": ">=4.3.2",
+      "installedVersions": [
+        "4.1.1"
+      ],
+      "findingPathCount": 27,
+      "examplePaths": [
+        ".>eslint>@eslint/eslintrc>js-yaml",
+        ".>eslint-config-next>@next/eslint-plugin-next>@eslint-community/eslint-utils>eslint>@eslint/eslintrc>js-yaml"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "image-size",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-5p2g-fcmc-qvqq",
+      "url": "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
+      "vulnerableVersions": ">=1.2.0 <=2.0.2",
+      "patchedRange": ">=2.0.3",
+      "installedVersions": [
+        "2.0.2"
+      ],
+      "findingPathCount": 1,
+      "examplePaths": [
+        ".>vinext>image-size"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "image-size",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-w3rx-r6r6-pgpr",
+      "url": "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr",
+      "vulnerableVersions": ">=0.6.3 <=2.0.2",
+      "patchedRange": ">=2.0.3",
+      "installedVersions": [
+        "2.0.2"
+      ],
+      "findingPathCount": 1,
+      "examplePaths": [
+        ".>vinext>image-size"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-pmjh-fq2x-6v4x",
+      "url": "https://github.com/advisories/GHSA-pmjh-fq2x-6v4x",
+      "vulnerableVersions": ">=7.11.0 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "low",
+      "githubAdvisoryId": "GHSA-r53p-7pc4-xj5r",
+      "url": "https://github.com/advisories/GHSA-r53p-7pc4-xj5r",
+      "vulnerableVersions": ">=7.0.0 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-rfgv-xxqx-mfg5",
+      "url": "https://github.com/advisories/GHSA-rfgv-xxqx-mfg5",
+      "vulnerableVersions": ">=7.0.0 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-3xpg-4rpp-hhhm",
+      "url": "https://github.com/advisories/GHSA-3xpg-4rpp-hhhm",
+      "vulnerableVersions": ">=7.15.0 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-2jfj-6hjv-fm6j",
+      "url": "https://github.com/advisories/GHSA-2jfj-6hjv-fm6j",
+      "vulnerableVersions": ">=7.0.0 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "low",
+      "githubAdvisoryId": "GHSA-2gqq-gqf2-x968",
+      "url": "https://github.com/advisories/GHSA-2gqq-gqf2-x968",
+      "vulnerableVersions": ">=7.1.0 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-w293-vg96-wgc3",
+      "url": "https://github.com/advisories/GHSA-w293-vg96-wgc3",
+      "vulnerableVersions": ">=7.24.1 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "low",
+      "githubAdvisoryId": "GHSA-8436-99hf-9mmv",
+      "url": "https://github.com/advisories/GHSA-8436-99hf-9mmv",
+      "vulnerableVersions": ">=7.0.0 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "undici",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-rx4f-c7p8-82vq",
+      "url": "https://github.com/advisories/GHSA-rx4f-c7p8-82vq",
+      "vulnerableVersions": ">=7.0.0 <7.29.1",
+      "patchedRange": ">=7.29.1",
+      "installedVersions": [
+        "7.24.8"
+      ],
+      "findingPathCount": 3,
+      "examplePaths": [
+        ".>@cloudflare/vite-plugin>miniflare>undici",
+        ".>@cloudflare/vite-plugin>wrangler>miniflare>undici"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "fast-uri",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-hrr3-gc8f-f4qj",
+      "url": "https://github.com/advisories/GHSA-hrr3-gc8f-f4qj",
+      "vulnerableVersions": ">=3.0.0 <3.1.8",
+      "patchedRange": ">=3.1.8",
+      "installedVersions": [
+        "3.1.7"
+      ],
+      "findingPathCount": 26,
+      "examplePaths": [
+        ".>@hookform/resolvers>ajv>fast-uri",
+        ".>@hookform/resolvers>ajv-formats>ajv>fast-uri"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-q2hr-2g5m-vwhr",
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+      "vulnerableVersions": "<1.1.21",
+      "patchedRange": ">=1.1.21",
+      "installedVersions": [
+        "1.1.14"
+      ],
+      "findingPathCount": 85,
+      "examplePaths": [
+        ".>eslint>@eslint/config-array>minimatch>brace-expansion",
+        ".>eslint>@eslint/eslintrc>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-q2hr-2g5m-vwhr",
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+      "vulnerableVersions": ">=4.0.0 <5.0.12",
+      "patchedRange": ">=5.0.12",
+      "installedVersions": [
+        "5.0.6"
+      ],
+      "findingPathCount": 11,
+      "examplePaths": [
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-qhr7-859c-m2p7",
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+      "vulnerableVersions": "<1.1.20",
+      "patchedRange": ">=1.1.20",
+      "installedVersions": [
+        "1.1.14"
+      ],
+      "findingPathCount": 85,
+      "examplePaths": [
+        ".>eslint>@eslint/config-array>minimatch>brace-expansion",
+        ".>eslint>@eslint/eslintrc>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-qhr7-859c-m2p7",
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+      "vulnerableVersions": ">=4.0.0 <5.0.11",
+      "patchedRange": ">=5.0.11",
+      "installedVersions": [
+        "5.0.6"
+      ],
+      "findingPathCount": 11,
+      "examplePaths": [
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-6j4f-fj2g-mc7p",
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+      "vulnerableVersions": "<1.1.19",
+      "patchedRange": ">=1.1.19",
+      "installedVersions": [
+        "1.1.14"
+      ],
+      "findingPathCount": 85,
+      "examplePaths": [
+        ".>eslint>@eslint/config-array>minimatch>brace-expansion",
+        ".>eslint>@eslint/eslintrc>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "brace-expansion",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-6j4f-fj2g-mc7p",
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+      "vulnerableVersions": ">=4.0.0 <5.0.10",
+      "patchedRange": ">=5.0.10",
+      "installedVersions": [
+        "5.0.6"
+      ],
+      "findingPathCount": 11,
+      "examplePaths": [
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+        ".>eslint-config-next>eslint-import-resolver-typescript>eslint-plugin-import>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "next",
+      "severity": "critical",
+      "githubAdvisoryId": "GHSA-vcvr-r3jv-pc5j",
+      "url": "https://github.com/advisories/GHSA-vcvr-r3jv-pc5j",
+      "vulnerableVersions": ">=16.2.0 <16.3.6",
+      "patchedRange": ">=16.3.6",
+      "installedVersions": [
+        "16.3.4"
+      ],
+      "findingPathCount": 2,
+      "examplePaths": [
+        ".>next",
+        ".>vinext>@unpic/react>next"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "braces",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-vfj7-8cjw-p6xm",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "vulnerableVersions": "<=3.0.3",
+      "patchedRange": ">=3.0.4",
+      "installedVersions": [
+        "3.0.3"
+      ],
+      "findingPathCount": 2,
+      "examplePaths": [
+        ".>eslint-config-next>@next/eslint-plugin-next>fast-glob>micromatch>braces",
+        ".>vinext>vite-plugin-commonjs>vite-plugin-dynamic-import>fast-glob>micromatch>braces"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "source-map-js",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-68fv-2mgg-jv7q",
+      "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+      "vulnerableVersions": ">=1.0.0 <1.2.2",
+      "patchedRange": ">=1.2.2",
+      "installedVersions": [
+        "1.2.1"
+      ],
+      "findingPathCount": 17,
+      "examplePaths": [
+        ".>next>postcss>source-map-js",
+        ".>@cloudflare/vite-plugin>vite>postcss>source-map-js"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "sharp",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-wq5f-xc86-pv6w",
+      "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w",
+      "vulnerableVersions": "<0.35.5",
+      "patchedRange": ">=0.35.5",
+      "installedVersions": [
+        "0.35.4"
+      ],
+      "findingPathCount": 5,
+      "examplePaths": [
+        ".>next>sharp",
+        ".>@cloudflare/vite-plugin>miniflare>sharp"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "next",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-3w37-wq28-93x7",
+      "url": "https://github.com/advisories/GHSA-3w37-wq28-93x7",
+      "vulnerableVersions": ">=16.3.0 <16.3.8",
+      "patchedRange": ">=16.3.8",
+      "installedVersions": [
+        "16.3.4"
+      ],
+      "findingPathCount": 2,
+      "examplePaths": [
+        ".>next",
+        ".>vinext>@unpic/react>next"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "next",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-4jqv-mc3x-m676",
+      "url": "https://github.com/advisories/GHSA-4jqv-mc3x-m676",
+      "vulnerableVersions": ">=16.0.0 <16.3.8",
+      "patchedRange": ">=16.3.8",
+      "installedVersions": [
+        "16.3.4"
+      ],
+      "findingPathCount": 2,
+      "examplePaths": [
+        ".>next",
+        ".>vinext>@unpic/react>next"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "next",
+      "severity": "low",
+      "githubAdvisoryId": "GHSA-39w2-rjm5-chcv",
+      "url": "https://github.com/advisories/GHSA-39w2-rjm5-chcv",
+      "vulnerableVersions": ">=16.0.0 <16.3.8",
+      "patchedRange": ">=16.3.8",
+      "installedVersions": [
+        "16.3.4"
+      ],
+      "findingPathCount": 2,
+      "examplePaths": [
+        ".>next",
+        ".>vinext>@unpic/react>next"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "next",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-f87g-xv8r-7p7x",
+      "url": "https://github.com/advisories/GHSA-f87g-xv8r-7p7x",
+      "vulnerableVersions": ">=16.0.0 <16.3.8",
+      "patchedRange": ">=16.3.8",
+      "installedVersions": [
+        "16.3.4"
+      ],
+      "findingPathCount": 2,
+      "examplePaths": [
+        ".>next",
+        ".>vinext>@unpic/react>next"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "next",
+      "severity": "moderate",
+      "githubAdvisoryId": "GHSA-mcj8-r9mp-w47p",
+      "url": "https://github.com/advisories/GHSA-mcj8-r9mp-w47p",
+      "vulnerableVersions": ">=16.0.0 <16.3.8",
+      "patchedRange": ">=16.3.8",
+      "installedVersions": [
+        "16.3.4"
+      ],
+      "findingPathCount": 2,
+      "examplePaths": [
+        ".>next",
+        ".>vinext>@unpic/react>next"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    },
+    {
+      "module": "next",
+      "severity": "high",
+      "githubAdvisoryId": "GHSA-cjq9-62q9-8jv4",
+      "url": "https://github.com/advisories/GHSA-cjq9-62q9-8jv4",
+      "vulnerableVersions": ">=16.0.0 <16.3.8",
+      "patchedRange": ">=16.3.8",
+      "installedVersions": [
+        "16.3.4"
+      ],
+      "findingPathCount": 2,
+      "examplePaths": [
+        ".>next",
+        ".>vinext>@unpic/react>next"
+      ],
+      "allPathsUnchangedFromBaseline": true
+    }
+  ]
+}
