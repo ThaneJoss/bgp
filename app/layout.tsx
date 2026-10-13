@@ -20,7 +20,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <a className="skip-link" href="#main-content">跳至主要内容</a>
+        {children}
+      </body>
     </html>
   );
 }

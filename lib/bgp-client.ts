@@ -1,3 +1,5 @@
+import browserWorkerUrl from './bgp/browser-worker.mjs?worker&url';
+
 export type BGPRoute = { rrc: string; location: string; peer: string; prefix: string; path: number[]; observedAt: string };
 export type BGPPathResult = {
   ip: string; fetchedAt: string; dataTime: string | null; source: string; snapshotId: string;
@@ -22,7 +24,9 @@ export function cancelBGPDownload() { cancelPending?.(); }
 
 export function loadBGPData(options: { date: string; file?: File; onProgress: (progress: BGPProgress) => void }): Promise<BGPMetadata> {
   if (cancelPending) return Promise.reject(new Error('已有数据正在获取，请等待或取消。'));
-  const worker = new Worker(new URL('./bgp/browser-worker.mjs', import.meta.url), { type: 'module' });
+  // vinext rewrites client import.meta.url to a file URL. Let Vite emit the
+  // worker URL directly so browsers load the bundle from this site's origin.
+  const worker = new Worker(browserWorkerUrl, { type: 'module' });
   const id = ++sequence;
   return new Promise((resolve, reject) => {
     let loaded = false, closed = false;

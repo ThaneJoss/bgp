@@ -36,12 +36,27 @@ RouteViews 原站的 CORS 响应只允许其指定的 MRT Explorer 域。本站�
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm run lint
+pnpm run typecheck
 pnpm run bgp:test
-pnpm exec tsc --noEmit
-node scripts/verify-functional.mjs
+pnpm run test:functional
 pnpm run dev
-pnpm run build:cloudflare
 ```
+
+生产验证使用本地构建和合成数据；以下命令不会部署，也不会下载真实 BGP 文件：
+
+```sh
+pnpm exec wrangler deploy --dry-run
+pnpm run test:worker
+pnpm exec playwright install --with-deps chromium
+pnpm run test:e2e
+```
+
+每个 PR 和 `main` push 都执行合成解析测试、全仓库 ESLint、TypeScript、生命周期与路径图检查、生产构建、产物 Worker 验证及 Chromium 集成测试。浏览器检查覆盖桌面与 320px 小屏、键盘导航、axe 无障碍规则、手动加载仓库拓扑快照，以及合成 MRT 导入、查询和错误恢复。详见 [CI](docs/bgp/ci.md) 与 [验证说明](docs/bgp/verification.md)。
+
+依赖修补范围与尚未解决的审计告警见 [依赖审查](docs/dependencies.md)。代码检查通过不代表依赖审计零告警。
+
+依赖升级与审计范围见 [依赖说明](docs/dependencies.md)。
 
 | 路径 | 用途 |
 | --- | --- |
@@ -53,6 +68,7 @@ pnpm run build:cloudflare
 | `lib/bgp/vendor/` | MIT 授权的 bzip2 解码器及许可 |
 | `src/bgp-download.mjs` | 无存储的原始文件转发 |
 | `tests/bgp/` / `tests/worker/` | 合成解析、查询与转发测试 |
+| `tests/e2e/` | 本地生产站点的 Chromium、响应式与无障碍检查 |
 
 `.github/workflows/bgp-daily.yml`、SQLite 构建/发布脚本、R2 查询/上传 Worker、D1/Drizzle 模板和依赖已移除。CI 只保留代码检查与构建。旧查询/上传入口返回 410。
 
