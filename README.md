@@ -54,9 +54,7 @@ pnpm run test:e2e
 
 每个 PR 和 `main` push 都执行合成解析测试、全仓库 ESLint、TypeScript、生命周期与路径图检查、生产构建、产物 Worker 验证及 Chromium 集成测试。浏览器检查覆盖桌面与 320px 小屏、键盘导航、axe 无障碍规则、手动加载仓库拓扑快照，以及合成 MRT 导入、查询和错误恢复。详见 [CI](docs/bgp/ci.md) 与 [验证说明](docs/bgp/verification.md)。
 
-依赖修补范围与尚未解决的审计告警见 [依赖审查](docs/dependencies.md)。代码检查通过不代表依赖审计零告警。
-
-依赖升级与审计范围见 [依赖说明](docs/dependencies.md)。
+依赖审计作为独立 PR 检查运行，包含开发依赖，任一已知告警即失败。修补范围与尚未解决的告警见 [依赖审查](docs/dependencies.md)；代码检查通过不代表依赖审计通过。
 
 | 路径 | 用途 |
 | --- | --- |
