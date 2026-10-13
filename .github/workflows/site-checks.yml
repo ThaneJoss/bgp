@@ -1,4 +1,4 @@
-name: Website build
+name: Website checks
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       SHARP_IGNORE_GLOBAL_LIBVIPS: '1'
       WRANGLER_SEND_METRICS: 'false'
@@ -21,17 +21,33 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           cache: pnpm
       - name: Install locked website dependencies
         run: pnpm install --frozen-lockfile
-      - name: Check types and browser data lifecycle
+      - name: Lint, types, browser data lifecycle and path rendering
         run: |
-          pnpm exec tsc --noEmit
-          node scripts/verify-functional.mjs
+          pnpm run lint
+          pnpm run typecheck
+          pnpm run test:functional
       - name: Build and check deployment without database or object storage
         run: pnpm exec wrangler deploy --dry-run
       - name: Exercise the production browser Worker bundle
-        run: node scripts/verify-browser-worker.mjs
+        run: pnpm run test:worker
+      - name: Install Chromium for local browser checks
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Test the local production site with synthetic BGP data
+        run: pnpm run test:e2e
+      - name: Save browser screenshots and failure details
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -2,20 +2,8 @@ name: Browser BGP checks
 
 on:
   pull_request:
-    paths:
-      - 'lib/bgp/**'
-      - 'lib/bgp-client.ts'
-      - 'src/**'
-      - 'tests/**'
-      - '.github/workflows/bgp-checks.yml'
   push:
     branches: [main]
-    paths:
-      - 'lib/bgp/**'
-      - 'lib/bgp-client.ts'
-      - 'src/**'
-      - 'tests/**'
-      - '.github/workflows/bgp-checks.yml'
   workflow_dispatch:
 
 permissions:
