@@ -1,4 +1,5 @@
-import { execFileSync } from 'node:child_process';
+import { gzipSync } from 'node:zlib';
+import compressjs from 'compressjs';
 
 export const uint = (value, size) => { const buffer = Buffer.alloc(size); buffer.writeUIntBE(value, 0, size); return buffer; };
 const cat = (...parts) => Buffer.concat(parts);
@@ -26,7 +27,9 @@ export const fixture = () => cat(peers(),
   rib('010101', 24, [64500, 13335], { index: 2 }));
 
 export function compress(bytes, format = 'bz2') {
-  return execFileSync('python3', ['-c', `import sys, ${format}; sys.stdout.buffer.write(${format}.compress(sys.stdin.buffer.read()))`], { input: bytes, maxBuffer: 16 * 1024 ** 2 });
+  if (format === 'gzip') return gzipSync(bytes, { level: 9 });
+  if (format === 'bz2') return Buffer.from(compressjs.Bzip2.compressFile(bytes, undefined, 9));
+  throw new Error(`Unsupported fixture compression: ${format}`);
 }
 export function byteStream(bytes, size = 97) {
   let offset = 0;

@@ -38,7 +38,7 @@ RouteViews 原站的 CORS 响应只允许其指定的 MRT Explorer 域。本站�
 pnpm install --frozen-lockfile
 pnpm run lint
 pnpm run typecheck
-pnpm run bgp:test
+pnpm test
 pnpm run test:functional
 pnpm run dev
 ```
@@ -52,9 +52,9 @@ pnpm exec playwright install --with-deps chromium
 pnpm run test:e2e
 ```
 
-每个 PR 和 `main` push 都执行合成解析测试、全仓库 ESLint、TypeScript、生命周期与路径图检查、生产构建、产物 Worker 验证及 Chromium 集成测试。浏览器检查覆盖桌面与 320px 小屏、键盘导航、axe 无障碍规则、手动加载仓库拓扑快照，以及合成 MRT 导入、查询和错误恢复。详见 [CI](docs/bgp/ci.md) 与 [验证说明](docs/bgp/verification.md)。
+质量 CI 统一调用通用自动发现模板；生命周期、生产 Worker 与 Chromium 检查保留为本地验收命令。浏览器检查覆盖桌面与 320px 小屏、键盘导航、axe 无障碍规则、手动加载仓库拓扑快照，以及合成 MRT 导入、查询和错误恢复。详见 [CI](docs/bgp/ci.md) 与 [验证说明](docs/bgp/verification.md)。
 
-依赖审计作为独立 PR 检查运行，包含开发依赖，任一已知告警即失败。修补范围与尚未解决的告警见 [依赖审查](docs/dependencies.md)；代码检查通过不代表依赖审计通过。
+通用 CI 强制执行完整依赖审计，包含开发依赖，high 及以上告警会使门禁失败。修补范围与尚未解决的告警见 [依赖审查](docs/dependencies.md)；代码检查通过不代表依赖审计通过。
 
 | 路径 | 用途 |
 | --- | --- |
@@ -66,9 +66,12 @@ pnpm run test:e2e
 | `lib/bgp/vendor/` | MIT 授权的 bzip2 解码器及许可 |
 | `src/bgp-download.mjs` | 无存储的原始文件转发 |
 | `tests/bgp/` / `tests/worker/` | 合成解析、查询与转发测试 |
+| `scripts/data/` / `tests/data/` | Node 离线 CAIDA 加工与固定小图验证 |
 | `tests/e2e/` | 本地生产站点的 Chromium、响应式与无障碍检查 |
 
-`.github/workflows/bgp-daily.yml`、SQLite 构建/发布脚本、R2 查询/上传 Worker、D1/Drizzle 模板和依赖已移除。CI 只保留代码检查与构建。旧查询/上传入口返回 410。
+`.github/workflows/bgp-daily.yml`、SQLite 构建/发布脚本、R2 查询/上传 Worker、D1/Drizzle 模板和依赖已移除。质量 CI 仅保留一个固定 SHA 的 reusable workflow 调用。旧查询/上传入口返回 410。
+
+离线工具仅在维护者显式运行时加工本地输入，不进入访客浏览器或构建的全量数据流程。命令、schema 与算法差异见 [离线数据工具](docs/bgp/data-tools.md)。仓库中的历史静态 JSON 未重新生成。
 
 ## 部署
 

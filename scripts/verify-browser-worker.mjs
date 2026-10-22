@@ -9,8 +9,10 @@ import { Worker } from 'node:worker_threads';
 import { fixture, compress } from '../tests/bgp/fixtures.mjs';
 
 const directory = 'dist/client/_next/static';
-const filename = readdirSync(directory).find(name => /^browser-worker-.*\.js$/.test(name));
-assert(filename, 'Build the browser worker before running this check.');
+const filenames = readdirSync(directory, { recursive: true })
+  .filter(name => /(?:^|\/)browser-worker-[^/]+\.js$/.test(name));
+assert.equal(filenames.length, 1, 'Build exactly one production browser worker before running this check.');
+const [filename] = filenames;
 const url = pathToFileURL(resolve(directory, filename)).href;
 const packed = compress(fixture()).toString('base64');
 const adapter = `

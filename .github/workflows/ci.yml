@@ -1,0 +1,14 @@
+name: CI
+
+'on':
+  push: {}
+  pull_request: {}
+  merge_group: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ThaneJoss/github-ci/.github/workflows/ci.yml@89624ba02d911171a634ddeb4848c298f3b1c842

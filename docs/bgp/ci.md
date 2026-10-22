@@ -1,13 +1,15 @@
-# CI：仅验证代码，不自动更新数据
+# CI：使用通用自动发现模板
 
-`bgp-daily.yml` 已删除。没有 cron、RouteViews 下载、SQLite 构建、快照发布或数据保留清理任务。
+`.github/workflows/ci.yml` 只调用 [ThaneJoss/github-ci 的固定版本](https://github.com/ThaneJoss/github-ci/blob/89624ba02d911171a634ddeb4848c298f3b1c842/.github/workflows/ci.yml)。调用方没有 inputs、env、secrets 或专属步骤，使用 push、pull_request、merge_group 和 workflow_dispatch 触发，仅授予 `contents: read`。
 
-- `bgp-checks.yml`：每个 PR 都运行 Node 标准库测试，用 Python 标准库生成合成 bzip2 样本，验证流式解压、MRT、session、IPv4/IPv6 LPM、损坏文件和按需转发。没有路径过滤，修改 Node 版本或依赖也会运行。
-- `site-checks.yml`：安装锁定依赖，依次运行全仓库 ESLint、TypeScript、客户端生命周期与路径图渲染检查、Wrangler dry-run 生产构建、生产浏览器 Worker 产物检查、真实 Chromium 集成测试。
-- `dependency-audit.yml`：独立审计完整锁文件（含开发依赖），执行 `pnpm audit --audit-level=low`。任一已知告警即失败，没有忽略项或 `continue-on-error`；当前未发布修复的 braces high 会使此检查失败，详见 [依赖审查](../dependencies.md)。它不会安装依赖或运行依赖构建脚本。
+原独立质量工作流 `bgp-checks.yml`、`site-checks.yml` 及旧 UI 分支新增的 `dependency-audit.yml` 均已移除；保留全部测试源码与 package scripts。Node 数据迁移提供标准 `test`（MRT/查询/转发与固定小型 CAIDA 流程）、`typecheck` 和原 `lint` / `build`，由通用模板自动发现。没有项目专属 CI 步骤、模板修改或安全豁免。
 
-三个工作流保留 pull request、主分支 push 和手动触发，只读仓库权限，不要求 Cloudflare 凭据，不访问 BGP 上游。`wrangler deploy --dry-run` 仅构建并验证产物，没有发布步骤。依赖和 Chromium 由安装步骤获取，审计访问 npm registry；应用测试只访问本地站点、仓库现有 CAIDA JSON 和合成 MRT 数据。
+PR #5 原始 head 因 `scripts/data/requirements.txt` 被自动发现拒绝。PR #6 将对应 Python 工具迁为 Node 后移除该 requirements，并为 standalone 根项目声明 `packages: ['.']`，保留安装策略、版本固定及冻结锁文件。算法差异见 [离线数据工具](data-tools.md)。外部模板的 Python 编排不属于本仓库工具运行依赖。
 
-浏览器测试使用 1440px 桌面及 320px 触摸视口，覆盖两页初始状态、跳至主要内容、活动导航、对话框焦点、横向溢出、axe WCAG A/AA 规则、手动加载拓扑，以及真实浏览器 Worker 导入、查询、错误后保留数据和刷新后清空数据。测试会阻断并报告外域请求和 `/api/bgp/download` 请求，防止误触发真实路由下载。仅在此仓库的 Actions 保存桌面/移动端拓扑与合成路径截图，以及失败时的 trace 等测试产物，保留 7 天。
+通用模板顺序执行 lint、typecheck、test、build、JS 语法和强制 high 级依赖审计；任一步失败会阻断后续步骤。未执行的检查以及 `NOT RUN` 不等于通过，必须按精确 head 的实际 CI 日志报告。客户端生命周期、Wrangler dry-run、Worker 产物、浏览器/无障碍检查保留为手动验证，不恢复独立 workflow，也不伪称通用 CI 执行了它们。
 
-自动化无障碍检查无法替代屏幕阅读器和人工操作验收；未配置或修改分支保护规则。
+浏览器测试使用 1440px 桌面及 320px 触摸视口，覆盖初始状态、键盘导航、对话框焦点、横向溢出、axe WCAG A/AA、手动加载拓扑、真实浏览器 Worker 导入、session 切换及错误恢复。测试会阻断外域及 `/api/bgp/download` 请求，全部输入为本地合成 MRT 或仓库已有 JSON；截图和失败 trace 写入本地 `test-results/`。自动检查不能替代人工屏幕阅读器验收。
+
+本仓库没有发布、部署或自动数据更新 Actions workflow。原 Cloudflare GitHub 集成保持不变，push/merge 可能自动构建；通用 CI 不执行发布、RouteViews 下载或生产数据写入。合并前后须分别核对 Actions 和既有自动构建的实际终态。
+
+当前依赖阻碍及复核依据见 [依赖审查](../dependencies.md)。没有降低审计阈值、添加忽略项、吞错或修改分支保护。

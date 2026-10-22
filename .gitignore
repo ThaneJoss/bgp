@@ -48,10 +48,9 @@ next-env.d.ts
 /work/
 
 # Offline data preparation outputs
-/scripts/data/python-deps/
-/scripts/data/__pycache__/
 /scripts/data/*.bz2
 /scripts/data/*.gz
+/scripts/data/*.part
 /scripts/data/*-index.html
 /scripts/data/*.json
 /scripts/data/groups/
@@ -59,5 +58,3 @@ next-env.d.ts
 
 # BGP ingestion outputs are never source artifacts
 _bgp/
-__pycache__/
-*.pyc

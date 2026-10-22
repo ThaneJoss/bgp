@@ -112,3 +112,43 @@ test('production browser Worker imports synthetic MRT and preserves data after e
   await page.reload();
   await expect(page.getByRole('button', { name: '请先获取数据' })).toBeDisabled();
 });
+
+test('ASN deep links load only on request and reset discards an in-flight scene', async ({ page, localRequests }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/?asn=13335');
+  expect(localRequests.filter(path => path.startsWith('/data/'))).toEqual([]);
+  await page.getByRole('button', { name: '获取拓扑数据', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /^AS13335 ·/ })).toBeVisible();
+  await expect(page.locator('.atlas-busy')).toHaveCount(0);
+
+  // Hold the actual local response so a late completion races with reset.
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let requested!: () => void;
+  const requestStarted = new Promise<void>(resolve => { requested = resolve; });
+  await page.route('**/data/explorer/g*-c*.json', async route => {
+    const response = await route.fetch();
+    requested();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.getByRole('button', { name: '在所在区块中定位' }).click();
+    await requestStarted;
+    await expect(page.locator('.atlas-busy')).toBeVisible();
+    await page.getByRole('button', { name: '返回全球网络', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '全球网络', exact: true })).toBeVisible();
+    const completed = page.waitForResponse(response => /\/data\/explorer\/g\d+-c\d+\.json$/.test(response.url()));
+    release();
+    await completed;
+    // Let the fulfilled fetch's scene update settle, then verify the reset won.
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await expect(page).toHaveURL('http://127.0.0.1:4173/');
+    await expect(page.getByRole('heading', { name: '全球网络', exact: true })).toBeVisible();
+    await expect(page.locator('.atlas-busy')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  } finally {
+    release();
+  }
+});

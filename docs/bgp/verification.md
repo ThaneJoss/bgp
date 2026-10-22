@@ -3,7 +3,7 @@
 ```sh
 pnpm run lint
 pnpm run typecheck
-pnpm run bgp:test
+pnpm test
 pnpm run test:functional
 pnpm exec wrangler deploy --dry-run
 pnpm run test:worker
@@ -11,7 +11,7 @@ pnpm exec playwright install --with-deps chromium
 pnpm run test:e2e
 ```
 
-需要 Node（版本以 `.node-version` 为准）、锁定的 pnpm 和 Python 3。浏览器检查先构建生产产物，再由 Playwright 启动本地 Wrangler；不复用已有服务器、不部署、不需要 Cloudflare 凭据。`test:worker` 使用 Node 独立线程，`test:e2e` 使用真实 Chromium，分别验证相同生产 Worker 产物。
+需要 Node（版本以 `.node-version` 为准）、锁定的 pnpm ；合成压缩样本与离线数据工具均使用 Node。浏览器检查先构建生产产物，再由 Playwright 启动本地 Wrangler；不复用已有服务器、不部署、不需要 Cloudflare 凭据。`test:worker` 使用 Node 独立线程，`test:e2e` 使用真实 Chromium，分别验证相同生产 Worker 产物。
 
 自动化检查覆盖：
 
@@ -26,7 +26,9 @@ pnpm run test:e2e
 
 真实浏览器导入还验证 Worker URL 与站点同源：`bgp-client.ts` 使用 Vite 的 `?worker&url` 导入，避免 vinext 将 `import.meta.url` 改写为 `file://` 后导致浏览器拒绝加载。单独运行 Node Worker 产物无法发现该页面集成问题。
 
-以上自动化检查均接入每个 PR 和 `main` push 的 Actions。浏览器检查禁止外域和 BGP 转发请求，全部输入来自合成样本或仓库现有 JSON。桌面/移动端拓扑与合成路径截图及失败详情保存在 `test-results/`（不提交），CI 上传到本仓库，保留 7 天。
+通用 CI 实际执行范围见 [CI 说明](ci.md)；生命周期、生产 Worker 和浏览器检查仍可手动执行。浏览器检查禁止外域和 BGP 转发请求，全部输入来自合成样本或仓库现有 JSON。桌面/移动端拓扑与合成路径截图及失败详情保存在 `test-results/`（不提交），不由通用 CI 单独上传。
+
+标准 `test` 同时覆盖固定小型 CAIDA 流程；算法、schema、确定性和未运行的全量范围见 [Node 数据工具](data-tools.md)。
 
 人工浏览器验收：打开 `/paths`，点击获取并观察进度，取消再重试；导入 HKIX 文件后比较两个 IP，切换观测 session；刷新后应清除内存数据。拓扑页需点击「获取拓扑数据」才加载 CAIDA 快照。
 
