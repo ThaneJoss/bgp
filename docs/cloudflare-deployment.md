@@ -12,7 +12,7 @@ pnpm exec wrangler deploy --dry-run
 pnpm run deploy
 ```
 
-根目录 `wrangler.jsonc` 通过 custom build 生成 Vinext/Vite 产物；Vite 使用 `wrangler.vite.jsonc` 的源入口。域名仍为 `bgp.thanejoss.com`。
+根目录 `wrangler.jsonc` 通过 custom build 生成 Vinext/Vite 产物；Vite 使用 `wrangler.vite.jsonc` 的源入口。生产入口沿用 `bgp.thanejoss.com/*` 普通 Worker Route，所属 zone 为 `thanejoss.com`。保留当前 `bgp.thanejoss.com` CNAME 及其目标、代理状态；Wrangler 只同步 Worker Route，不创建同名 Custom Domain 或接管 DNS。
 
 | 入口 | 行为 |
 | --- | --- |
@@ -26,7 +26,7 @@ pnpm run deploy
 
 合并新版本后，每日采集 workflow 被删除；部署新版本后，查询与上传入口停用、R2 binding 移除。旧的数据库/R2 数据及 Cloudflare/GitHub Secrets 不会被代码删除，也不再被使用。可以在确认新版工作后自行清理原有资源。不要继续运行旧分支中的发布 workflow。
 
-仍需检查自定义域名没有被旧 Worker Route 截获。无需设置 `R2_BUCKET`、`R2_PUBLISH_URL`、`R2_PUBLISH_TOKEN` 或 `INGEST_TOKEN`。
+仍需检查 `bgp.thanejoss.com/*` 路由指向 `bgp`，并通过实际域名验证现有 CNAME 链路、HTTPS 与页面请求。无需设置 `R2_BUCKET`、`R2_PUBLISH_URL`、`R2_PUBLISH_TOKEN` 或 `INGEST_TOKEN`。
 
 Workers Builds 如已配置，可以保留安装和 `pnpm run deploy` 命令。网站构建/部署与 BGP 数据采集无关，不会下载路由数据。
 
