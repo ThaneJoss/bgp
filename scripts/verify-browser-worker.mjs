@@ -10,7 +10,7 @@ import { fixture, compress } from '../tests/bgp/fixtures.mjs';
 
 const directory = 'dist/client/_next/static';
 const filenames = readdirSync(directory, { recursive: true })
-  .filter(name => /(?:^|\/)browser-worker-[^/]+\.js$/.test(name));
+  .filter(name => /(?:^|[\\/])browser-worker-[^\\/]+\.js$/.test(name));
 assert.equal(filenames.length, 1, 'Build exactly one production browser worker before running this check.');
 const [filename] = filenames;
 const url = pathToFileURL(resolve(directory, filename)).href;

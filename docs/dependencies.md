@@ -1,6 +1,95 @@
 # 依赖审查（2026-11-06）
 
-## 当前结论
+## 当前结论：2026-11-06 本轮部分修补，仍不可合并
+
+本轮在 PR #4 head `30e9c887618a4a08a182cc7d84b2abe83d3130ce` 的基础上更新依赖及由 pnpm 生成的锁文件。使用官方 npm registry 重现修补前完整审计 **17 项：2 critical、6 high、7 moderate、2 low**；候选锁的完整 JSON 审计变为 **1 moderate、0 critical / high / low**，剩余项为 minimatch。[机器可读审计摘要](dependency-audit-2026-11-06.json) 包含前后锁文件 SHA-256、公告及版本，审计包含开发依赖。
+
+**这不代表全部已知安全问题已修复，也不构成合并许可。** 人工核对发现，Next 2026-11-03 和 Undici 2026-11-05 的官方仓库公告仍覆盖候选版本，其中 Undici 有一项明确标为 High。对官方 npm bulk advisory 服务单独查询候选 Next / Undici 版本时，这批新公告尚未返回；机器审计可能晚于维护者公告。PR #4 继续保持草稿，后续必须完成到龄补丁和最终 head 验证。
+
+### 已实施的候选升级
+
+| 依赖 | 本轮候选 | 选择依据与兼容范围 |
+| --- | --- | --- |
+| Next / eslint-config-next | 16.3.8 → **16.4.3** | 已满足七天期限，覆盖此前 16.4.1 修复的 RCE / DoS 公告；Next、ESLint 配置及 Next 平台包保持同版。仍有下表列出的七项新公告。 |
+| React / React DOM / react-server-dom-webpack | 19.2.8 → **19.2.9** | [React RSC RCE](https://github.com/react/react/security/advisories/GHSA-xqc2-xf4c-x3h3) 与 [Server Functions DoS](https://github.com/react/react/security/advisories/GHSA-h3gv-c5rc-p453) 的同系列补丁。RSC 的 React / DOM peer 均为 `^19.2.9`；Vinext 1.0.1 的 `^19.2.6` 和 RSC 插件 0.5.34 的 peer 范围允许本次升级。 |
+| Zod | 3.25.76 → **4.6.7** | 覆盖 [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) 的 4.6.6 修补下限。根依赖固定版本，并限定 `eslint-plugin-react-hooks@7.1.1 > zod` 为同版，锁中不再保留 Zod 3。 |
+| Undici（Miniflare 路径） | 7.29.1 → **7.30.1** | 保留 `miniflare@4.20260617.1 > undici` 的限定 override；修补 TLS 校验选项丢失、TLS renegotiation 崩溃及 content-encoding 错误等独立问题。缓存修补仍不完整，**不是全部已知漏洞的最终修复版**。 |
+| fast-uri | 3.1.8 → **3.1.9** | [官方 3.1.9 安全发布](https://github.com/fastify/fast-uri/releases/tag/v3.1.9) 修补四项 URI 解析 / 规范化公告；Ajv 8.20.0 的 `^3.0.1` 范围允许该补丁。保留对旧 3.1.7 路径的修补并覆盖实际 3.1.8 路径。 |
+
+Zod 4 升级在使用方声明范围内：`@hookform/resolvers@5.7.1`、`eslint-plugin-react-hooks@7.1.1` 和保留的 `zod-validation-error@4.0.2` 均接受 `^3.25.0 || ^4.0.0`。已核对 Hooks 7.1.1 发布包实际引用 `zod/v4` 与 `zod-validation-error/v4`；应用源码未发现直接 Zod / resolver 导入。这里没有把只支持 Zod 3 的依赖强行覆盖成 Zod 4，仍须用 lint、类型检查和既有功能验证确认新闭包。
+
+锁文件的新增包版本均来自上表及 Next 的配套平台包；React peer 标识同步更新。解析器另将四处依赖归并到原锁中已有版本：Hooks 的 Babel parser 7.29.9、Next 的 caniuse-lite 1.0.30001814、Webpack 的 es-module-lexer 2.3.2，以及可选 wasm-runtime 的 emnapi core 1.11.1 / wasm-util 0.10.4。未升级 ESLint、TypeScript、Vinext、Vite、Wrangler 或 Miniflare 主包。
+
+### 人工核实的 Next 剩余公告
+
+[Next 2026-11-03 官方安全发布](https://nextjs.org/blog/november-2026-security-release) 的七项修复均需 **16.4.5**；本轮 16.4.3 在以下全部范围内。仓库公告当前均标 Moderate，但官方博客将第一项标为 High，保留这一来源差异，不能据机器审计概括成“无高危风险”。
+
+| 官方仓库公告 | Next 16.x 受影响范围 | 仓库当前严重性 |
+| --- | --- | --- |
+| [GHSA-mfr8-8qww-v76h](https://github.com/vercel/next.js/security/advisories/GHSA-mfr8-8qww-v76h) | `>=16.3.0 <=16.4.4` | Moderate；博客为 High |
+| [GHSA-vc7v-qv4w-wrv8](https://github.com/vercel/next.js/security/advisories/GHSA-vc7v-qv4w-wrv8) | `>=16.2.0 <=16.4.4` | Moderate |
+| [GHSA-vvgp-ww4w-46vf](https://github.com/vercel/next.js/security/advisories/GHSA-vvgp-ww4w-46vf) | `>=16.4.0 <=16.4.4` | Moderate |
+| [GHSA-rhh4-g77r-r9qj](https://github.com/vercel/next.js/security/advisories/GHSA-rhh4-g77r-r9qj) | `>=16.0.0 <=16.4.4` | Moderate |
+| [GHSA-pc58-hwjq-p385](https://github.com/vercel/next.js/security/advisories/GHSA-pc58-hwjq-p385) | `>=16.0.0 <=16.4.4` | Moderate |
+| [GHSA-7qx7-33qx-rqx2](https://github.com/vercel/next.js/security/advisories/GHSA-7qx7-33qx-rqx2) | `>=16.0.0 <=16.4.4` | Moderate |
+| [GHSA-f3mh-rxg3-f5g2](https://github.com/vercel/next.js/security/advisories/GHSA-f3mh-rxg3-f5g2) | `>=16.0.0 <=16.4.4` | Moderate |
+
+### 人工核实的 Undici 剩余公告
+
+[Undici 7.30.2 官方安全发布](https://github.com/nodejs/undici/releases/tag/v7.30.2) 修补六项新公告；本轮 7.30.1 仍全部受影响。
+
+| 官方仓库公告 | Undici 7.x 受影响范围 | 严重性 |
+| --- | --- | --- |
+| [GHSA-mqg3-3v4r-cm32](https://github.com/nodejs/undici/security/advisories/GHSA-mqg3-3v4r-cm32) | `>=7.30.1 <7.30.2` | **High** |
+| [GHSA-7xg3-fphp-28hg](https://github.com/nodejs/undici/security/advisories/GHSA-7xg3-fphp-28hg) | `>=7.0.0 <7.30.2` | Moderate |
+| [GHSA-5rm8-gv32-r954](https://github.com/nodejs/undici/security/advisories/GHSA-5rm8-gv32-r954) | `>=7.0.0 <7.30.2` | Moderate |
+| [GHSA-9v6h-8rgp-m69f](https://github.com/nodejs/undici/security/advisories/GHSA-9v6h-8rgp-m69f) | `>=7.0.0 <7.30.2` | Moderate |
+| [GHSA-3g9m-rv3r-w5w2](https://github.com/nodejs/undici/security/advisories/GHSA-3g9m-rv3r-w5w2) | `>=7.0.0 <7.30.2` | Moderate |
+| [GHSA-r4pc-4jcp-7pqc](https://github.com/nodejs/undici/security/advisories/GHSA-r4pc-4jcp-7pqc) | `>=7.15.0 <7.30.2` | Moderate |
+
+第一项是此前 [GHSA-4w7w-5xrc-9h26](https://github.com/nodejs/undici/security/advisories/GHSA-4w7w-5xrc-9h26) 缓存修补不完整的绕过，不能从新公告的版本区间推断 7.29.1 原先没有同类风险。本轮保留 7.30.1 的理由是减少已确认的 TLS / DoS 等攻击面，而非用审计告警数量或颜色选择版本；**人工已知 High 继续阻止合并**。
+
+该 High 要求同时使用无固定 origin 的 `Agent`、共享缓存及 `compose(redirect(), cache())`。对 Miniflare 4.20260617.1 发布包主入口的静态检查发现 `fetch`、`Pool`、`MockAgent` 和全局 dispatcher 调用，未发现该缓存 interceptor 组合。此检查仅限已检查源码，不能排除外部全局 dispatcher 配置，也不能证明整个部署不可利用，更不能作为豁免。应用构建使用 Vinext；Next 的包版本告警同样不能单独证明线上暴露了所有对应功能。
+
+### 七天期限与 minimatch 阻塞
+
+以下时间来自[官方 npm registry](https://registry.npmjs.org/)，按现有 `minimumReleaseAge: 10080` 分钟计算，均为 UTC：
+
+| 待补齐版本 | 发布时间 | 最早满七天时间 |
+| --- | --- | --- |
+| Next 16.4.5（同时对齐 eslint-config-next 及平台包） | 2026-11-03 18:01:54.667 | **2026-11-10 18:01:54.667** |
+| Undici 7.30.2（继续限定 Miniflare 父版本） | 2026-11-05 09:06:58.994 | **2026-11-12 09:06:58.994** |
+
+本轮 Next 16.4.3、React 三件套 19.2.9、Zod 4.6.7、Undici 7.30.1、fast-uri 3.1.9 均已满七天。当前不存在已满七天且覆盖上述全部已知公告的 Next 16.x / Undici 7.x 候选；不通过 age exclusion、降低期限或接受缺失发布时间来绕过要求。
+
+剩余机器告警 [minimatch GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249) 为 Moderate，影响 `>=7.0.0 <11.0.1`，锁定路径为 `@typescript-eslint/typescript-estree@8.59.3 > minimatch@10.2.5`。当前父包及核对时最新稳定父包 8.72.1 均声明 `minimatch: ^10.2.2`，因此 Next ESLint 更新不会自动获得 11.x 修复。11.0.1 虽已满七天，仍超出父包声明范围；不通过全局跨主版本 override 或降级绕过公告，保留此项并等待上游支持的修补路径。
+
+保留 `minimumReleaseAgeIgnoreMissingTime: false`、`trustLockfile: false`、`strictDepBuilds: true`、安装脚本白名单及 high 审计门槛；没有加入 audit ignore，也不把官方 npm 暂未收录的公告视为已关闭。到龄后必须重新查询公告与 peer 范围、生成锁文件，并完成冻结安装、完整 JSON 审计、high 门禁及项目既有验证；这些是后续操作要求，不表示已创建定时任务。
+
+### 本轮本地验证（Windows，Node 22.23.2 / pnpm 11.25.0）
+
+| 检查 | 实际结果 |
+| --- | --- |
+| `pnpm install --frozen-lockfile` | 通过；七天发布时间、缺失时间拒绝、锁文件验证及构建脚本策略保持原样 |
+| `pnpm peers check`、lint、typecheck | 全部通过，peer 无问题 |
+| `pnpm test` | **20/20 通过，0 skip / fail**；使用工作区内的临时目录 |
+| `pnpm build` | 通过，生成生产 RSC / SSR / 浏览器资源 |
+| `pnpm test:worker` | 通过；实际生产 Worker 下载、解压、导入、查询及错误路径 |
+| `pnpm test:e2e` | **6/6 通过**；桌面和 320px 移动 Chromium，包含 axe、手动加载、合成 MRT、错误恢复、ASN 深链接和在途重置 |
+| Wrangler `deploy --dry-run` | 通过；仅本地输出验证，没有部署 |
+| 33 个跟踪 JS 文件语法检查、`git diff --check` | 通过 |
+| `pnpm audit --json` | 退出 1：1 moderate（minimatch），无机器报告的 high / critical；人工公告阻塞仍在 |
+| `pnpm audit --audit-level=high` | 退出 0；不表示人工已核实的公告已修复 |
+| `pnpm test:functional` | Windows Vite SSR 模块加载失败，`transport invoke timed out after 60000ms`；退出 1，后续 path-diagram 脚本未由该串联命令执行 |
+| 单独 `node scripts/verify-path-diagram.mjs` | 通过；共享节点、分叉、相同、前缀包含、不相交及重汇聚路径断言 |
+
+首轮数据下载测试受默认沙箱临时目录的文件重命名权限影响，改用工作区临时目录后通过，未修改下载实现。另修正测试 JSON 映射键和生产 Worker 文件匹配的 Windows 路径分隔符，保留所有断言。浏览器首轮因沙箱的 localhost `EACCES` 无法启动 workerd；允许本地回环连接后原测试全部通过，测试仍拦截外部请求及真实 BGP 下载。已检查桌面拓扑和移动路径截图。
+
+手动生命周期脚本在默认沙箱及允许本地连接的环境均于首次页面 SSR 加载超时；失败对象分别包括 `components/ui/dialog.tsx` 和 `lib/bgp/source.mjs`。未放宽超时、跳过断言或将其计为通过。标准构建、生产浏览器回归与 Worker 验证的成功不能替代该失败项。远端精确提交的 CI 结果以 PR #4 最终 head 的检查为准。
+
+## 历史记录：2026-11-06 本轮修补前
+
+以下保留修补前远端 CI 与原 head 的证据；其中“当前”“本轮”和阻塞结论仅适用于当时版本，应以上方候选锁审查为最新状态。
 
 PR #4 的整合修复仍不能合并，但阻塞原因已经变化。[braces GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) 于 **2026-10-23 撤回**，官方说明其不具备实际可利用性。不能继续把 10 月 22 日的“braces 无补丁”作为当前唯一阻塞，也不能仅凭撤回公告宣称完整审计通过。
 

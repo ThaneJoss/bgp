@@ -1,6 +1,6 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { compress } from '../bgp/fixtures.mjs';
 
 export const relationshipsFilename = '20260901.as-rel.txt.bz2';
@@ -54,7 +54,7 @@ export const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
 export async function jsonFiles(directory, prefix = '') {
   const files = {};
   for (const entry of await readdir(join(directory, prefix), { withFileTypes: true })) {
-    const relative = join(prefix, entry.name);
+    const relative = posix.join(prefix, entry.name);
     if (entry.isDirectory()) Object.assign(files, await jsonFiles(directory, relative));
     else if (entry.name.endsWith('.json')) files[relative] = await readJson(join(directory, relative));
   }
