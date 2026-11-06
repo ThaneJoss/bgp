@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ChevronRight, Expand, Globe2, Loader2, Minus, Network, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Expand, Globe2, Loader2, Minus, Plus, Search, X } from 'lucide-react';
 
 type Summary = { meta: { date: string; totalAS: number; totalLinks: number }; groups: { id: string; label: string; seedAsn: number; asnCount: number }[]; links: { source: string; target: string; count: number }[] };
 type Index = Record<string, [string, string, string, number]>;
@@ -75,7 +75,7 @@ function MapCanvas({ scene, open, busy }: { scene: Scene; open: (n: Vertex) => v
   }, [scene, nodes, map, size, camera, ratio, hover, radius]);
   const hit = (x: number, y: number) => { let best: Vertex | null = null, distance = Infinity; for (const n of nodes) { const dx = x - (size.w/2 + camera.x + n.x*ratio*camera.k), dy = y - (size.h/2 + camera.y + n.y*ratio*camera.k); const d = Math.hypot(dx,dy); if (d < Math.max(13, radius(n)*Math.max(.75,Math.min(1.8,Math.sqrt(camera.k)))+4) && d < distance) { distance=d; best=n; } } return best; };
   return <div className="atlas-canvas" ref={host}>
-    <canvas ref={canvas} aria-label={`${scene.label}，${scene.nodes.length} 个节点。可通过左侧节点列表进行键盘操作。`} style={{ cursor: hover ? 'pointer' : 'grab' }}
+    <canvas ref={canvas} role="img" aria-label={`${scene.label}，${scene.nodes.length} 个节点。可通过节点列表进行键盘操作。`} style={{ cursor: hover ? 'pointer' : 'grab' }}
       onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); pointers.current.set(e.pointerId,{x:e.clientX,y:e.clientY}); gesture.current = {x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false,pinch:pointers.current.size>1}; }}
       onPointerMove={e => {
         const g = gesture.current, prev = pointers.current.get(e.pointerId);
@@ -204,9 +204,10 @@ export default function MapExplorer({ snapshot }: { snapshot: Summary }) {
   const reset=()=>{requestId.current++;setBusy(false);setError('');setScene(world);setAddress(world);setHistory([]);setQuery('');setListFilter('');setListLimit(60);};
   const localNodes=useMemo(()=>scene.nodes.filter(n=>n.asn!==scene.asn||scene.kind!=='as').filter(n=>!listFilter||`${n.label} ${n.sub}`.toLowerCase().includes(listFilter.toLowerCase())),[scene,listFilter]);
   const relationships=useMemo(()=>new Map(scene.links.map(l=>[l.target,l.relationship])),[scene]);
-  return <section className="atlas-explorer">
+  return <section className="atlas-explorer" aria-label="AS 拓扑浏览器">
+    <p className="sr-only" role="status">{busy ? '正在加载网络节点。' : `当前视图：${scene.label}，${fmt(scene.nodes.length)} 个节点，${fmt(scene.links.length)} 条连接。`}</p>
     <aside className="atlas-sidebar"><div className="atlas-sidebar-title"><strong>网络地图</strong><span>{fmt(snapshot.meta.totalAS)} AS</span></div>
-      <label className="search-box"><Search size={16}/><input aria-label="定位任意 ASN 或网络名称" placeholder="定位 ASN / 网络名称" value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button aria-label="清空搜索" onClick={()=>setQuery('')}><X size={14}/></button>}</label>
+      <div className="search-box"><Search size={16}/><input aria-label="定位任意 ASN 或网络名称" placeholder="定位 ASN / 网络名称" value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button aria-label="清空搜索" onClick={()=>setQuery('')}><X size={14}/></button>}</div>
       {query.trim()?<div className="atlas-search-results"><div className="atlas-list-heading">全量 AS 搜索</div>{indexBusy?<p className="atlas-note"><Loader2 className="spin" size={15}/>正在加载搜索索引…</p>:indexError?<p role="alert">{indexError}</p>:searchResults.length?searchResults.map(([asn,data])=><button key={asn} className="atlas-list-node" disabled={busy} onClick={()=>navigate('as',asn)}><span className="atlas-dot" style={{background:groupColor(data[0])}}/><span><strong>AS{asn}</strong><small>{data[2]}</small></span><ChevronRight size={14}/></button>):<p className="atlas-note">没有匹配的 ASN 或网络名称。</p>}</div>:<>
       {scene.kind!=='world'&&<button className="atlas-back" onClick={back}><ArrowLeft size={15}/>返回上一层</button>}
       <div className="atlas-scene-description"><span>{scene.kind==='world'?'第 1 层 · 全球社区':scene.kind==='group'?'第 2 层 · 社区区块':scene.kind==='tile'?'第 3 层 · 全部 AS':'AS 邻接关系'}</span><h2>{scene.label}</h2>{scene.kind==='as'&&<p>{fmt(scene.nodes.length-1)} 个直接邻居 · 快照 {scene.date}</p>}</div>
