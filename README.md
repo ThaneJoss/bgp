@@ -54,7 +54,7 @@ pnpm run build:cloudflare
 | `src/bgp-download.mjs` | 无存储的原始文件转发 |
 | `tests/bgp/` / `tests/worker/` | 合成解析、查询与转发测试 |
 
-`.github/workflows/bgp-daily.yml`、SQLite 构建/发布脚本、R2 查询/上传 Worker、D1/Drizzle 模板和依赖已移除。CI 只保留代码检查与构建。旧查询/上传入口返回 410。
+`.github/workflows/bgp-daily.yml`、SQLite 构建/发布脚本、R2 查询/上传 Worker、D1/Drizzle 模板和依赖已移除。质量 CI 统一调用通用自动发现模板，实际执行与未执行范围见 [CI 说明](docs/bgp/ci.md)。旧查询/上传入口返回 410。
 
 ## 部署
 
