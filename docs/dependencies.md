@@ -1,6 +1,34 @@
-# 依赖审查（2026-11-06）
+# 依赖审查
 
-## 当前结论：2026-11-06 本轮部分修补，仍不可合并
+## 当前结论：2026-11-10，#6 / #5 仍待到龄安全补丁
+
+PR #4 已以 `3ab7889d1117a755e81052df013914546b085f21` 合入 #6 分支。#6 随后同步 main `36c1f502d8841c3c434fb6f90cfd2ee4aa97f636` 的普通 Worker Route / 现有 CNAME 修复，避免后续合并恢复同名 Custom Domain；README 中误留的 Python 压缩样本要求也已修正。本轮没有修改 package、锁文件、七天安装策略或固定 SHA 的通用 CI。
+
+**#6 / #5 继续保持 draft，不合并、不启用自动合并。** 2026-11-10 实际完整 `pnpm audit --json` 仍只返回 minimatch 的 1 moderate，high 门槛退出 0；这不能覆盖未进入 npm 审计数据库的官方公告。重新读取 [Undici GHSA-mqg3-3v4r-cm32](https://github.com/nodejs/undici/security/advisories/GHSA-mqg3-3v4r-cm32) 确认其仍为 High，当前 7.30.1 在受影响范围内，修补版为 7.30.2。重新读取 [Next GHSA-mfr8-8qww-v76h](https://github.com/vercel/next.js/security/advisories/GHSA-mfr8-8qww-v76h) 也确认当前 16.4.3 仍在受影响范围内，需至少 16.4.5。
+
+本轮重新查询官方 npm registry 的发布时间，按 10080 分钟计算：
+
+| 候选 | 发布时间（UTC） | 最早可安装（UTC） |
+| --- | --- | --- |
+| Next 16.4.5 | 2026-11-03 18:01:54.667 | **2026-11-10 18:01:54.667** |
+| eslint-config-next 16.4.5 | 2026-11-03 17:52:34.911 | 2026-11-10 17:52:34.911 |
+| Undici 7.30.2 | 2026-11-05 09:06:58.994 | **2026-11-12 09:06:58.994** |
+
+核对时尚未到龄，未尝试安装这些候选、手工改锁或添加策略例外。Next 的配套平台包也须逐一满足期限。到龄后先重新核对全部最新公告、发布时间、兼容范围和父包声明，再用固定 pnpm 生成锁文件；日期到达本身不代表通过安全验收。minimatch 仍保留上游兼容性阻碍，不强制跨主版本覆盖。
+
+### 本轮云端验证（Linux，Node 22.23.2 / pnpm 11.25.0）
+
+对合入 main 路由修复后的代码执行：
+
+- 冻结安装、peer 检查、lint、typecheck、20/20 标准测试（0 skip / fail）、构建、生产 Worker 产物检查和所有跟踪 JS 文件语法检查通过。
+- `pnpm test:functional` 的生命周期与路径图脚本均通过。Windows 历史超时未在本次 Linux 重现；没有修改或放宽脚本，也没有重测 Windows，不能写成 Windows 已修复。
+- Wrangler `deploy --dry-run` 通过；源配置与生成的 `dist/server/wrangler.json` 均保留 `bgp.thanejoss.com/*`、`zone_name: thanejoss.com`，没有 Custom Domain。没有手动部署或 DNS 变更。
+- Chromium 验收**未完成**：锁定 Playwright Chromium 下载返回无效 ZIP；使用既有系统 Chromium 156.0.8078.79 的临时本地配置后，六项用例均在浏览器启动阶段因 `socket() failed: Operation not permitted` 失败，尚未执行页面断言。允许执行的重试仍同样失败。仓库 Playwright 配置、测试和断言均未改动；不能把启动失败计为页面回归通过。
+- 完整审计退出 1（1 moderate），high 门槛退出 0；官方 Undici High 仍阻止下游合并。
+
+剩余顺序为 **#6 → #5 → main**。#5 仍为旧 head `1974d667aeb4f086da45528c12b859df895f1ddc`，未获得这些修复；每个 PR 都必须在自己的最终 head 重新验证 CI，不能借用上游的绿灯。通用 CI 不包含手动浏览器检查。
+
+## 历史记录：2026-11-06 本轮部分修补，仍不可合并
 
 本轮在 PR #4 head `30e9c887618a4a08a182cc7d84b2abe83d3130ce` 的基础上更新依赖及由 pnpm 生成的锁文件。使用官方 npm registry 重现修补前完整审计 **17 项：2 critical、6 high、7 moderate、2 low**；候选锁的完整 JSON 审计变为 **1 moderate、0 critical / high / low**，剩余项为 minimatch。[机器可读审计摘要](dependency-audit-2026-11-06.json) 包含前后锁文件 SHA-256、公告及版本，审计包含开发依赖。
 

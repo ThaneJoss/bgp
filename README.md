@@ -32,7 +32,7 @@ RouteViews 原站的 CORS 响应只允许其指定的 MRT Explorer 域。本站�
 
 ## 开发与验证
 
-需要 Node 22.13+、pnpm 11 和 Python 3（仅生成压缩测试样本）。
+需要 Node 22.13+ 和 pnpm 11。离线 CAIDA 加工与压缩测试样本均由 Node.js 运行，无 Python/pip 依赖。
 
 ```sh
 pnpm install --frozen-lockfile

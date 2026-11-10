@@ -9,8 +9,8 @@
   "workers_dev": true,
   "routes": [
     {
-      "pattern": "bgp.thanejoss.com",
-      "custom_domain": true
+      "pattern": "bgp.thanejoss.com/*",
+      "zone_name": "thanejoss.com"
     }
   ],
   "assets": {
