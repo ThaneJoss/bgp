@@ -32,21 +32,22 @@ export default function PathDiagram({ a, b, ipA, ipB, fetchedAt, initialNames = 
   a: BgpRoute; b: BgpRoute; ipA: string; ipB: string; fetchedAt: string; initialNames?: NameShard;
 }) {
   const [names, setNames] = useState<NameShard>(initialNames);
-  const [namesStatus, setNamesStatus] = useState<'loading' | 'ready' | 'partial'>('loading');
+  const [namesResult, setNamesResult] = useState<{ key: string; status: 'ready' | 'partial' } | null>(null);
   const paths = useMemo(() => splitPaths(a.path, b.path), [a.path, b.path]);
   const buckets = useMemo(() => [...new Set([...a.path, ...b.path].map(asn => asn % 256))].sort((x, y) => x - y), [a.path, b.path]);
+  const bucketKey = buckets.join(',');
+  const namesStatus = namesResult?.key === bucketKey ? namesResult.status : 'loading';
   useEffect(() => {
     let active = true;
-    setNamesStatus('loading');
     Promise.allSettled(buckets.map(loadNames)).then(results => {
       if (!active) return;
       const combined: NameShard = {};
       for (const result of results) if (result.status === 'fulfilled') Object.assign(combined, result.value);
       setNames(previous => ({ ...previous, ...combined }));
-      setNamesStatus(results.some(result => result.status === 'rejected') ? 'partial' : 'ready');
+      setNamesResult({ key: bucketKey, status: results.some(result => result.status === 'rejected') ? 'partial' : 'ready' });
     });
     return () => { active = false; };
-  }, [buckets]);
+  }, [buckets, bucketKey]);
 
   const titleFor = (asn: number) => {
     const info = names[String(asn)];

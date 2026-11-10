@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ChevronRight, Expand, Globe2, Loader2, Minus, Network, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Expand, Globe2, Loader2, Minus, Plus, Search, X } from 'lucide-react';
 
 type Summary = { meta: { date: string; totalAS: number; totalLinks: number }; groups: { id: string; label: string; seedAsn: number; asnCount: number }[]; links: { source: string; target: string; count: number }[] };
 type Index = Record<string, [string, string, string, number]>;
@@ -29,7 +29,6 @@ function MapCanvas({ scene, open, busy }: { scene: Scene; open: (n: Vertex) => v
   const host = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 900, h: 590 });
   const [camera, setCamera] = useState({ x: 0, y: 0, k: 1 });
-  const cameraRef = useRef(camera); cameraRef.current = camera;
   const pointers = useRef(new Map<number, {x:number;y:number}>());
   const gesture = useRef<{ x: number; y: number; startX: number; startY: number; moved: boolean; pinch: boolean } | null>(null);
   const [hover, setHover] = useState<Vertex | null>(null);
@@ -37,7 +36,6 @@ function MapCanvas({ scene, open, busy }: { scene: Scene; open: (n: Vertex) => v
   const nodes = useMemo(() => arrange(scene.nodes), [scene]);
   const map = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes]);
   const radius = useCallback((n: Vertex) => scene.kind === 'world' ? 12 + Math.sqrt(n.count / 23545) * 17 : scene.kind === 'group' ? 8 + Math.sqrt(n.count / 300) * 9 : n.asn === scene.asn ? 17 : 4 + Math.min(5, Math.log2(n.count + 1) * .5), [scene]);
-  useEffect(() => { setCamera({ x: 0, y: 0, k: 1 }); setHover(null); }, [scene]);
   useEffect(() => { const el = host.current; if (!el) return; const observer = new ResizeObserver(([entry]) => setSize({ w: entry.contentRect.width, h: entry.contentRect.height })); observer.observe(el); return () => observer.disconnect(); }, []);
   useEffect(() => {
     const el = canvas.current; if (!el) return;
@@ -75,9 +73,9 @@ function MapCanvas({ scene, open, busy }: { scene: Scene; open: (n: Vertex) => v
       }
     });
   }, [scene, nodes, map, size, camera, ratio, hover, radius]);
-  const hit = (x: number, y: number) => { let best: Vertex | null = null, distance = Infinity; for (const n of nodes) { const dx = x - (size.w/2 + cameraRef.current.x + n.x*ratio*cameraRef.current.k), dy = y - (size.h/2 + cameraRef.current.y + n.y*ratio*cameraRef.current.k); const d = Math.hypot(dx,dy); if (d < Math.max(13, radius(n)*Math.max(.75,Math.min(1.8,Math.sqrt(cameraRef.current.k)))+4) && d < distance) { distance=d; best=n; } } return best; };
+  const hit = (x: number, y: number) => { let best: Vertex | null = null, distance = Infinity; for (const n of nodes) { const dx = x - (size.w/2 + camera.x + n.x*ratio*camera.k), dy = y - (size.h/2 + camera.y + n.y*ratio*camera.k); const d = Math.hypot(dx,dy); if (d < Math.max(13, radius(n)*Math.max(.75,Math.min(1.8,Math.sqrt(camera.k)))+4) && d < distance) { distance=d; best=n; } } return best; };
   return <div className="atlas-canvas" ref={host}>
-    <canvas ref={canvas} aria-label={`${scene.label}，${scene.nodes.length} 个节点。可通过左侧节点列表进行键盘操作。`} style={{ cursor: hover ? 'pointer' : 'grab' }}
+    <canvas ref={canvas} role="img" aria-label={`${scene.label}，${scene.nodes.length} 个节点。可通过节点列表进行键盘操作。`} style={{ cursor: hover ? 'pointer' : 'grab' }}
       onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); pointers.current.set(e.pointerId,{x:e.clientX,y:e.clientY}); gesture.current = {x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false,pinch:pointers.current.size>1}; }}
       onPointerMove={e => {
         const g = gesture.current, prev = pointers.current.get(e.pointerId);
@@ -101,39 +99,115 @@ export default function MapExplorer({ snapshot }: { snapshot: Summary }) {
   const world = useMemo<Scene>(() => ({ kind:'world',id:'world',label:'全球网络',date:snapshot.meta.date,nodes:snapshot.groups.map((g,i)=>({id:g.id,label:short(g.label),sub:`核心 AS${g.seedAsn}`,count:g.asnCount,x:Math.cos(i*2.399963)*Math.sqrt(i+1)*100,y:Math.sin(i*2.399963)*Math.sqrt(i+1)*100,color:groupColor(g.id)})),links:snapshot.links }),[snapshot]);
   const [scene,setScene]=useState<Scene>(world);
   const [history,setHistory]=useState<Scene[]>([]);
-  const [busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [initialTarget] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const asn = params.get('asn'), group = params.get('group'), tile = params.get('tile');
+    if (asn && /^\d+$/.test(asn)) return { kind: 'as' as const, id: asn };
+    if (tile && /^g\d{2}-c\d{3}$/.test(tile)) return { kind: 'tile' as const, id: tile };
+    if (group && /^g\d{2}$/.test(group)) return { kind: 'group' as const, id: group };
+    return null;
+  });
+  const [busy,setBusy]=useState(Boolean(initialTarget)),[error,setError]=useState('');
   const [query,setQuery]=useState(''),[index,setIndex]=useState<Index|null>(null),[indexBusy,setIndexBusy]=useState(false),[indexError,setIndexError]=useState('');
-  const [searchResults,setSearchResults]=useState<[string,Index[string]][]>([]);
+  const [search, setSearch] = useState<{ query: string; results: [string, Index[string]][] }>({ query: '', results: [] });
+  const searchResults = search.query === query.trim() ? search.results : [];
   const [listLimit,setListLimit]=useState(60),[listFilter,setListFilter]=useState('');
   const cache=useRef(new Map<string,unknown>()), indexPromise=useRef<Promise<Index>|null>(null),requestId=useRef(0);
   const load = useCallback(async <T,>(name:string):Promise<T>=>{if(cache.current.has(name))return cache.current.get(name) as T;const r=await fetch(`/data/explorer/${name}.json`,{signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('这一层的数据暂时无法加载，请重试。');const data=await r.json() as T;if(cache.current.size>=24)cache.current.delete(cache.current.keys().next().value!);cache.current.set(name,data);return data;},[]);
-  const ensureIndex=useCallback(async()=>{if(index)return index;if(!indexPromise.current){setIndexBusy(true);setIndexError('');indexPromise.current=load<Index>('index').then(data=>{setIndex(data);return data;}).catch(e=>{indexPromise.current=null;setIndexError('搜索索引加载失败，请重新输入重试。');throw e;}).finally(()=>setIndexBusy(false));}return indexPromise.current;},[index,load]);
+  const readIndex = useCallback(() => {
+    if (!indexPromise.current) {
+      indexPromise.current = load<Index>('index').catch(error => {
+        indexPromise.current = null;
+        throw error;
+      });
+    }
+    return indexPromise.current;
+  }, [load]);
+  const ensureIndex = useCallback(async () => {
+    if (index) return index;
+    setIndexBusy(true);
+    setIndexError('');
+    try {
+      const data = await readIndex();
+      setIndex(data);
+      return data;
+    } catch (error) {
+      setIndexError('搜索索引加载失败，请重新输入重试。');
+      throw error;
+    } finally {
+      setIndexBusy(false);
+    }
+  }, [index, readIndex]);
   const setAddress = (s:Scene) => { const key = s.kind === 'world' ? '' : s.kind === 'as' ? 'asn' : s.kind; window.history.replaceState(null, '', key ? `/?${key}=${encodeURIComponent(s.id)}` : '/'); };
-  const navigate=useCallback(async(kind:'group'|'tile'|'as',id:string,focusASN?:number)=>{
-    const token=++requestId.current;setBusy(true);setError('');
-    try{let next:Scene;
+  const readScene=useCallback(async(kind:'group'|'tile'|'as',id:string,focusASN?:number):Promise<Scene>=>{
+      let next:Scene;
       if(kind==='group'){const d=await load<GroupData>(id);next={kind,id,label:d.label,group:id,date:snapshot.meta.date,nodes:d.children.map(c=>({id:c.id,label:c.label,sub:`核心 AS${c.seedAsn}`,count:c.count,x:c.x,y:c.y,color:groupColor(id)})),links:d.links};}
       else if(kind==='tile'){const d=await load<TileData>(id);next={kind,id,label:d.label,group:d.parent,tile:id,asn:focusASN,date:snapshot.meta.date,nodes:d.nodes.map(n=>({id:String(n.asn),asn:n.asn,label:`AS${n.asn}`,sub:n.name,count:n.degree,x:n.x,y:n.y,color:groupColor(n.group)})),links:d.links.map(e=>({...e,source:String(e.source),target:String(e.target),count:1}))};}
-      else{const asn=Number(id);const [all,shard]=await Promise.all([ensureIndex(),load<AdjData>(`adj/${asn%256}`)]);const info=all[id];const entry=shard[id];if(!info||!entry)throw new Error('该 ASN 不在当前 CAIDA 快照中。');
+      else{const asn=Number(id);const [all,shard]=await Promise.all([readIndex(),load<AdjData>(`adj/${asn%256}`)]);const info=all[id];const entry=shard[id];if(!info||!entry)throw new Error('该 ASN 不在当前 CAIDA 快照中。');
         const neighbors=[...entry.neighbors].sort((a,b)=>(all[String(b[0])]?.[3]||0)-(all[String(a[0])]?.[3]||0));
         const nodes:Vertex[]=[{id,asn,label:`AS${asn}`,sub:info[2],count:info[3],x:0,y:0,color:groupColor(info[0])},...neighbors.map(([n],i)=>{const data=all[String(n)];const a=i*2.399963,r=120+Math.sqrt((i+1)/Math.max(neighbors.length,1))*440;return{id:String(n),asn:n,label:`AS${n}`,sub:data?.[2]||`AS${n}`,count:data?.[3]||0,x:Math.cos(a)*r,y:Math.sin(a)*r,color:groupColor(data?.[0]||'g01')};})];
         next={kind,id,label:`AS${asn} · ${info[2]}`,group:info[0],tile:info[1],asn,date:snapshot.meta.date,nodes,links:neighbors.map(([n,r])=>({source:id,target:String(n),count:1,relationship:r}))};
       }
+      return next;
+  },[load,readIndex,snapshot.meta.date]);
+  const navigate=useCallback(async(kind:'group'|'tile'|'as',id:string,focusASN?:number)=>{
+    const token=++requestId.current;setBusy(true);setError('');
+    try {
+      const next=await readScene(kind,id,focusASN);
       if(token!==requestId.current)return;setHistory(h=>[...h,scene].slice(-20));setScene(next);setAddress(next);setQuery('');setListLimit(60);setListFilter('');
     }catch(e){if(token===requestId.current)setError(e instanceof Error?e.message:'加载失败，请重试。');}finally{if(token===requestId.current)setBusy(false);}
-  },[load,ensureIndex,scene,snapshot.meta.date]);
-  useEffect(()=>{if(!query.trim()){setSearchResults([]);return;}let cancelled=false;setSearchResults([]);const t=setTimeout(()=>{ensureIndex().then(all=>{if(cancelled)return;const q=query.trim().replace(/^AS(?=\d)/i,'').toLowerCase();if(/^\d+$/.test(q)){setSearchResults(all[q]?[[q,all[q]]]:[]);return;}const found:[string,Index[string]][]=[];for(const entry of Object.entries(all)){if(entry[1][2].toLowerCase().includes(q)){found.push(entry);if(found.length===20)break;}}setSearchResults(found);}).catch(()=>{});},200);return()=>{cancelled=true;clearTimeout(t);};},[query,ensureIndex]);
+  },[readScene,scene]);
+  useEffect(() => {
+    const requestedQuery = query.trim();
+    if (!requestedQuery) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      ensureIndex().then(all => {
+        if (cancelled) return;
+        const q = requestedQuery.replace(/^AS(?=\d)/i, '').toLowerCase();
+        const found: [string, Index[string]][] = [];
+        if (/^\d+$/.test(q)) {
+          if (all[q]) found.push([q, all[q]]);
+        } else {
+          for (const entry of Object.entries(all)) {
+            if (entry[1][2].toLowerCase().includes(q)) {
+              found.push(entry);
+              if (found.length === 20) break;
+            }
+          }
+        }
+        setSearch({ query: requestedQuery, results: found });
+      }).catch(() => {});
+    }, 200);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query, ensureIndex]);
   useEffect(()=>{const handle=(e:Event)=>{navigate('group',(e as CustomEvent<string>).detail);};window.addEventListener('atlas:open-group',handle);return()=>window.removeEventListener('atlas:open-group',handle);},[navigate]);
-  const initialSearch = useRef(false);
-  useEffect(() => { if (initialSearch.current) return; initialSearch.current = true; const params = new URLSearchParams(window.location.search); const asn = params.get('asn'), group = params.get('group'), tile = params.get('tile'); if (asn && /^\d+$/.test(asn)) navigate('as', asn); else if (tile && /^g\d{2}-c\d{3}$/.test(tile)) navigate('tile',tile); else if (group && /^g\d{2}$/.test(group)) navigate('group',group); }, [navigate]);
+  useEffect(() => {
+    if (!initialTarget) return;
+    let cancelled = false;
+    const token = ++requestId.current;
+    readScene(initialTarget.kind, initialTarget.id).then(next => {
+      if (cancelled || token !== requestId.current) return;
+      setHistory([world]);
+      setScene(next);
+      setBusy(false);
+    }).catch(error => {
+      if (cancelled || token !== requestId.current) return;
+      setError(error instanceof Error ? error.message : '加载失败，请重试。');
+      setBusy(false);
+    });
+    return () => { cancelled = true; };
+  }, [initialTarget, readScene, world]);
   const open=(n:Vertex)=>{if(busy)return;if(n.asn!==undefined){if(scene.kind!=='as'||n.asn!==scene.asn)navigate('as',String(n.asn));}else navigate(scene.kind==='world'?'group':'tile',n.id);};
   const back=()=>{requestId.current++;setBusy(false);setError('');const previous=history.at(-1);if(previous){setScene(previous);setAddress(previous);setHistory(history.slice(0,-1));}else {setScene(world);setAddress(world);}setListFilter('');setListLimit(60);};
   const reset=()=>{requestId.current++;setBusy(false);setError('');setScene(world);setAddress(world);setHistory([]);setQuery('');setListFilter('');setListLimit(60);};
   const localNodes=useMemo(()=>scene.nodes.filter(n=>n.asn!==scene.asn||scene.kind!=='as').filter(n=>!listFilter||`${n.label} ${n.sub}`.toLowerCase().includes(listFilter.toLowerCase())),[scene,listFilter]);
   const relationships=useMemo(()=>new Map(scene.links.map(l=>[l.target,l.relationship])),[scene]);
-  return <section className="atlas-explorer">
+  return <section className="atlas-explorer" aria-label="AS 拓扑浏览器">
+    <p className="sr-only" role="status">{busy ? '正在加载网络节点。' : `当前视图：${scene.label}，${fmt(scene.nodes.length)} 个节点，${fmt(scene.links.length)} 条连接。`}</p>
     <aside className="atlas-sidebar"><div className="atlas-sidebar-title"><strong>网络地图</strong><span>{fmt(snapshot.meta.totalAS)} AS</span></div>
-      <label className="search-box"><Search size={16}/><input aria-label="定位任意 ASN 或网络名称" placeholder="定位 ASN / 网络名称" value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button aria-label="清空搜索" onClick={()=>setQuery('')}><X size={14}/></button>}</label>
+      <div className="search-box"><Search size={16}/><input aria-label="定位任意 ASN 或网络名称" placeholder="定位 ASN / 网络名称" value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button aria-label="清空搜索" onClick={()=>setQuery('')}><X size={14}/></button>}</div>
       {query.trim()?<div className="atlas-search-results"><div className="atlas-list-heading">全量 AS 搜索</div>{indexBusy?<p className="atlas-note"><Loader2 className="spin" size={15}/>正在加载搜索索引…</p>:indexError?<p role="alert">{indexError}</p>:searchResults.length?searchResults.map(([asn,data])=><button key={asn} className="atlas-list-node" disabled={busy} onClick={()=>navigate('as',asn)}><span className="atlas-dot" style={{background:groupColor(data[0])}}/><span><strong>AS{asn}</strong><small>{data[2]}</small></span><ChevronRight size={14}/></button>):<p className="atlas-note">没有匹配的 ASN 或网络名称。</p>}</div>:<>
       {scene.kind!=='world'&&<button className="atlas-back" onClick={back}><ArrowLeft size={15}/>返回上一层</button>}
       <div className="atlas-scene-description"><span>{scene.kind==='world'?'第 1 层 · 全球社区':scene.kind==='group'?'第 2 层 · 社区区块':scene.kind==='tile'?'第 3 层 · 全部 AS':'AS 邻接关系'}</span><h2>{scene.label}</h2>{scene.kind==='as'&&<p>{fmt(scene.nodes.length-1)} 个直接邻居 · 快照 {scene.date}</p>}</div>
@@ -145,7 +219,7 @@ export default function MapExplorer({ snapshot }: { snapshot: Summary }) {
     </aside>
     <div className="atlas-main"><div className="atlas-toolbar"><div className="atlas-breadcrumb"><button onClick={reset} aria-label="返回全球网络"><Globe2 size={16}/>全球</button>{scene.group&&<><ChevronRight size={14}/><button disabled={busy} onClick={()=>navigate('group',scene.group!)}>{short(snapshot.groups.find(g=>g.id===scene.group)?.label||scene.group)}</button></>}{scene.tile&&<><ChevronRight size={14}/><button disabled={busy} onClick={()=>navigate('tile',scene.tile!)}>AS 区块</button></>}{scene.asn&&<><ChevronRight size={14}/><strong>AS{scene.asn}</strong></>}</div><span className="tag">{fmt(scene.nodes.length)} 节点</span></div>
       {error&&<div className="atlas-error" role="alert">{error}<button onClick={()=>setError('')} aria-label="关闭错误"><X size={14}/></button></div>}
-      <MapCanvas scene={scene} open={open} busy={busy}/>
+      <MapCanvas key={`${scene.kind}:${scene.id}:${scene.asn ?? ''}`} scene={scene} open={open} busy={busy}/>
       <div className="atlas-footer"><span><i style={{background:colors[0]}}/>AS / 网络集合 <i style={{background:'#abcfc7'}}/>对等关系</span><span>{fmt(scene.links.length)} 条{scene.kind==='world'||scene.kind==='group'?'聚合':''}连接 · {scene.date}</span></div>
       <p className="atlas-method">{scene.kind==='as'?'当前显示中心 AS 的全部直接邻居；点击邻居可以继续探索跨社区关系。':scene.kind==='tile'?'当前区块中的全部 AS 与区块内真实关系。点选任意 AS 可查看跨区块的全部邻居。':scene.kind==='group'?'区块按图遍历分片，用于按需加载全部 AS；区块之间的连线来自真实 AS 关系。':'按连接结构聚合为 20 个社区。继续进入社区、区块和 AS，可探索当前快照覆盖的全部网络。'} 位置表示拓扑布局，并非地理位置。</p>
     </div>
